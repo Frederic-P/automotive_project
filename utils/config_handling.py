@@ -5,6 +5,7 @@
 """
 
 import configparser
+import os
 
 def read_config(name):
     """
@@ -14,7 +15,8 @@ def read_config(name):
         Config files should be .ini-format compliant and need to be stored
         in the /config/ subfolder.
     """
-    config_path = f"./config/{name}"
+    current_path = os.getcwd()
+    config_path = os.path.join(current_path, name)
     config = configparser.ConfigParser()
     config.read(config_path)
     return config

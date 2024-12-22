@@ -1,0 +1,1 @@
+The notebooks in this directory are purely meant for myself and to try/compare different approaches and keeping them around with my notes. Good approaches are implemented in the actual code. 
