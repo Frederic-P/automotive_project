@@ -29,6 +29,11 @@
         z-index: 1;
     }
 
+    #clickform{
+        top:50px;
+        position: absolute;
+    }
+
     #primer {
         max-height: 450px;
         top: 50%; /* Move 50% down from the top edge of the parent */
@@ -94,7 +99,7 @@
         </div>
     </div>
     <div id="right">
-        <form action="/angle" method="POST" class ="circle-container">
+        <form id= clickform action="/angle" method="POST" class ="circle-container">
             <button id="front" class="item" onclick="this.form.angle.value='front'; this.form.submit();">Front</button>
             <button id="frontleft" class="item" onclick="this.form.angle.value='frontleft'; this.form.submit();">Frontleft</button>
             <button id="left" class="item" onclick="this.form.angle.value='left'; this.form.submit();">Left</button>
