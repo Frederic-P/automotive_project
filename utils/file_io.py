@@ -2,6 +2,14 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 import os
 from tqdm import tqdm
+
+
+def path_handler(root_dir, path_as_string):
+    """slave function for handling paths escaping."""
+    src = path_as_string.split('\\')
+    fq_src = os.path.join(root_dir, *src)
+    return fq_src
+
 def copy_file(src_file, dest_file):
     """
     Copy a single file from src_file to the destination file.

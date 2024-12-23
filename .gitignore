@@ -133,3 +133,4 @@ lib64
 config.ini
 yolov8n.pt
 config/automotive.conf.ini
+flask angle tagger/secret.txt

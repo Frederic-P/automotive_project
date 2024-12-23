@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angle Selector</title>
+    <style>
+        body {
+            display: flex;
+        }
+        #left {
+            width: 50%;
+            padding: 20px;
+        }
+        #right {
+            width: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+    .circle-container {
+        position: relative;
+        width: 600px; /* Circle diameter */
+        height: 600px; /* Circle diameter */
+        border: 1px dashed lightgray; /* Optional: to visualize the circle */
+        border-radius: 50%; /* Makes the container circular */
+        margin: 50px auto; /* Center the circle on the page */
+        z-index: 1;
+    }
+
+    #primer {
+        max-height: 450px;
+        top: 50%; /* Move 50% down from the top edge of the parent */
+        left: 50%; /* Move 50% right from the left edge of the parent */
+        transform: translate(75%, 10%);
+        z-index: 0;
+    }
+
+    img{
+ object-fit: scale-down;
+}
+    .item {
+        position: absolute;
+        width: 80px;
+        max-width: 80px;
+        height: 40px;
+        max-height: 40px;
+        background-color: #007bff;
+        color: white;
+        text-align: center;
+        line-height: 40px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 2;
+    }
+
+    /* top rear left right; easy */
+    .item:nth-child(1) { top: 0; left: 50%; transform: translate(-50%, -50%);   }
+    .item:nth-child(5) { top: 100%; left: 50%; transform: translate(-50%, -50%);  }
+    .item:nth-child(3) { top: 50%; left: 0%; transform: translate(-50%, -50%);  }
+    .item:nth-child(7) { top: 50%; left: 100%; transform: translate(-50%, -50%);  }
+    /*the ones in between translate is not perfect, but good enoguh*/
+    .item:nth-child(2) { top: 25%; left: 25%; transform: translate(-150%, -150%); }
+    .item:nth-child(8) { top: 25%; left: 75%; transform: translate(50%, -150%); }
+    .item:nth-child(4) { top: 75%; left: 25%; transform: translate(-175%, 0%); }
+    .item:nth-child(6) { top: 75%; left: 75%; transform: translate(75%, 0%); }
+
+    .bold{
+        font-weight: 900;
+    }
+
+    </style>
+</head>
+<body>
+    <div id ='left'>
+        <h2>{{ name }}</h2>
+        <h2>{{ autoscout_name }}</h2>
+        <p><span class="bold">year: </span><span>{{ year }}</span></p>
+        <p><span class="bold">shell: </span><span>{{ full_shell }}</span></p>
+        <p><span class="bold">Confidence: </span><span>{{ certainty }}</span></p>
+        <img id="imagethingy" src="{{ imadr }}" alt="Image">
+        <div>
+            <h3>Tag Distribution</h3>
+            <p> <span class="bold">Front</span><span>{{stats['front']}}</span></p>
+            <p> <span class="bold">Frontleft</span><span>{{stats['frontleft']}}</span></p>
+            <p> <span class="bold">Left</span><span>{{stats['left']}}</span></p>
+            <p> <span class="bold">Rearleft</span><span>{{stats['rearleft']}}</span></p>
+            <p> <span class="bold">Rear</span><span>{{stats['rear']}}</span></p>
+            <p> <span class="bold">Rearright</span><span>{{stats['rearright']}}</span></p>
+            <p> <span class="bold">Right</span><span>{{stats['right']}}</span></p>
+            <p> <span class="bold">Frontright</span><span>{{stats['frontright']}}</span></p>
+            <p> <span class="bold">Crap</span><span>{{stats['crappy']}}</span></p>
+        </div>
+    </div>
+    <div id="right">
+        <form action="/angle" method="POST" class ="circle-container">
+            <button id="front" class="item" onclick="this.form.angle.value='front'; this.form.submit();">Front</button>
+            <button id="frontleft" class="item" onclick="this.form.angle.value='frontleft'; this.form.submit();">Frontleft</button>
+            <button id="left" class="item" onclick="this.form.angle.value='left'; this.form.submit();">Left</button>
+            <button id="rearleft" class="item" onclick="this.form.angle.value='rearleft'; this.form.submit();">Rearleft</button>
+            <button id="rear" class="item" onclick="this.form.angle.value='rear'; this.form.submit();">Rear</button>
+            <button id="rearright" class="item" onclick="this.form.angle.value='rearright'; this.form.submit();">Rearright</button>
+            <button id="right" class="item" onclick="this.form.angle.value='right'; this.form.submit();">Right</button>
+            <button id="frontright" class="item" onclick="this.form.angle.value='frontright'; this.form.submit();">Frontright</button>
+            <input type="hidden" name="imid" value="{{ image_id }}">
+            <input type="hidden" name="angle" value="">
+            <img id="primer" src = "{{url_for('static', filename='car.jpg')}}">
+        </form>
+
+        <!-- you can also have crappy images: mark them as crappy. -->
+         <form class="othercontainer" action="/angle" method="POST">
+             <button id="crappy" class ="item" onclick="this.form.angle.value='crappy'; this.form.submit();">Crappy</button>
+            <input type="hidden" name="angle" value="">
+            <input type="hidden" name="imid" value="{{ image_id }}">
+
+         </form>
+    </div>
+    <script>
+        const xtop = {{ x1 }};
+        const ytop = {{ y1 }};
+        const xlow = {{ x2 }};
+        const ylow = {{ y2 }};
+        function annotate() {
+            const target = document.getElementById('imagethingy');
+            const canvas = document.createElement('canvas');
+            canvas.width = target.width;
+            canvas.height = target.height;
+            canvas.style.position = 'absolute';
+            canvas.style.left = target.offsetLeft + 'px';
+            canvas.style.top = target.offsetTop + 'px';
+            canvas.style.pointerEvents = 'none'; // Make sure it doesn't interfere with interactions
+            target.parentNode.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(xtop, ytop, xlow - xtop, ylow - ytop);
+        }    
+
+        window.onload = function() {
+        if (xtop !== null && xtop !== undefined) {
+            annotate();
+            }
+        };
+
+        function clickOnCrappy() {
+            const element = document.getElementById('crappy');
+            if (element) {
+                element.click();
+            }
+        }
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'c' || event.key === 'C') {
+            clickOnCrappy(); 
+            }
+        });
+                
+        </script>
+</body>
+</html>
