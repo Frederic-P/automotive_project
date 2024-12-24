@@ -164,5 +164,13 @@ def angle():
     db.commit_transaction()
     return redirect(url_for('index'))
 
+@app.route('/undo', methods=['GET'])
+def undo():
+    if 'logged_in' not in session:
+        return redirect(url_for('index'))
+    delete_last = "DELETE FROM angletags WHERE pk = (SELECT MAX(pk) FROM angletags);"
+    db.execute_query(delete_last)
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
