@@ -116,12 +116,11 @@
         <!-- you can also have crappy images: mark them as crappy. -->
          <form class="othercontainer" action="/angle" method="POST">
              <button id="crappy" class ="item" onclick="this.form.angle.value='crappy'; this.form.submit();">Crappy</button>
+            <button><a href="undo">Oopsie</a></button>
             <input type="hidden" name="angle" value="">
             <input type="hidden" name="imid" value="{{ image_id }}">
-
          </form>
 
-         <button><a href="undo">Oopsie</a></button>
     </div>
     <script>
         const xtop = {{ x1 }};

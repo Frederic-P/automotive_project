@@ -114,9 +114,10 @@ def index():
         yolo_certainty = round(confidence * 100, 3)
 
         # Use a dynamic route to serve the image
+        print(image_path)
+        print(os.path.exists(image_path))
         imadr = url_for('serve_image', filepath=image_path)
         stats = get_stats()
-        print(stats)
         return render_template(
             'index.html',
             name=car_name,
@@ -137,6 +138,10 @@ def index():
 # Route to dynamically serve images from any path
 @app.route('/serve_image/<path:filepath>')
 def serve_image(filepath):
+    #todo: make this check better with decent UNIX detection as in YOLO tagger. 
+    if filepath.startswith('home'):
+        filepath = '/'+filepath
+    print(filepath)
     if os.path.exists(filepath):
         return send_file(filepath)
 

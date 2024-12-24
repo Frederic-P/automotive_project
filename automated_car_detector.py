@@ -74,7 +74,7 @@ for id in tqdm(range(imids[0]['minrange'], imids[0]['maxrange'], batch_size)):
         path = os.path.join(basedir, image['image_path'].replace('\\', '/'))
         if not os.path.exists(path):
             with open('logging/automated_yolo_tagger.txt', 'a+') as f:
-                f.write(path, 'does not exists', '\n')
+                f.write(str(path)+ ' does not exists\n')
             continue
         is_car, image_path, box, confidence, area = cd.is_full_car(path, yolomodel)
         query = "UPDATE images SET "
