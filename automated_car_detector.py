@@ -18,6 +18,7 @@ sys.path.append('utils')
 import config_handling as conf
 from database import Database
 import car_detection as cd
+from file_io import path_handler
 
 ##Batch processing config: 
 batch_size = 250
@@ -71,7 +72,7 @@ for id in tqdm(range(imids[0]['minrange'], imids[0]['maxrange'], batch_size)):
     db.start_transaction()
     for image in batch_images:
         pk_id = image['id']
-        path = os.path.join(basedir, image['image_path'].replace('\\', '/'))
+        path = path_handler(basedir, image['image_path'])
         if not os.path.exists(path):
             with open('logging/automated_yolo_tagger.txt', 'a+') as f:
                 f.write(str(path)+ ' does not exists\n')

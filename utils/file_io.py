@@ -6,7 +6,8 @@ from tqdm import tqdm
 
 def path_handler(root_dir, path_as_string):
     """slave function for handling paths escaping."""
-    src = path_as_string.split('\\')
+    path_as_string = path_as_string.replace('\\', '/')
+    src = path_as_string.split('/')
     fq_src = os.path.join(root_dir, *src)
     return fq_src
 
