@@ -173,8 +173,16 @@ def angle():
 def undo():
     if 'logged_in' not in session:
         return redirect(url_for('index'))
-    delete_last = "DELETE FROM angletags WHERE pk = (SELECT MAX(pk) FROM angletags);"
-    db.execute_query(delete_last)
+
+    delete_last = """DELETE FROM angletags WHERE pk = (SELECT pk FROM (SELECT MAX(pk) as pk FROM angletags) AS temp);"""
+    try:
+        db.start_transaction()
+        db.execute_query(delete_last)
+        db.commit_transaction()
+    except Exception as e:
+        db.rollback_transaction()
+        print(f"Error during undo operation: {e}")
+        return "An error occurred while undoing the action."
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
