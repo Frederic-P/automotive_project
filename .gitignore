@@ -137,3 +137,6 @@ flask angle tagger/secret.txt
 
 # do not save .keras models to github.
 *.keras
+
+#ignore the models direcotry: 
+models/*
