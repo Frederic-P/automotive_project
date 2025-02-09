@@ -1,5 +1,6 @@
 import cv2
 import os
+import tensorflow as tf
 
 def preprocess_image(image_path, use_bounding_box=False, bbox=None, size=64):
     # Function to preprocess image data for CNN; applies boundingvox
@@ -31,3 +32,15 @@ def system_override():
     os.environ['HSA_OVERRIDE_GFX_VERSION'] = '10.3.0'
     os.environ['ROCM_PATH'] = '/opt/rocm'
     print('System override applied - check if GPU is detected')
+
+def system_pick_device():
+    physical_devices = tf.config.list_physical_devices('GPU')
+    if len(physical_devices) > 0:
+        device = 'GPU'
+        tf.config.set_visible_devices(physical_devices[0], 'GPU')
+    else:
+        device = 'CPU'
+
+    # Print the device being used
+    print(f"Using {device} for deep learning.")
+    return device
