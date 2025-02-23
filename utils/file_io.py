@@ -46,3 +46,24 @@ def mt_copier(src_root, src_files, dest_root, max_workers=4):
         # Wait for all tasks to complete
         for future in futures:
             future.result()
+
+        
+def make_absolute_path(dataframe, basedir, column_with_relative_dir, new_absolute_column, drop_relative=True): 
+    """
+    Utility to make relative paths in a dataframe absolute (relative paths are a project requirement (UNIX + Windows computers in this project))
+
+    Parameters:
+        dataframe (Pandas Dataframe); Dataframe to apply the mutationt ot
+        basedir (string): basedirectory where your host system has the root element of the images stored
+        column_with_relative_dir (string): name fo the column with the relative path (starting from the root element) of your images
+        new_absolute_column (string): name for the new column to be used
+        drop_relative (bool): If true will remove the relative column
+
+    returns a dataframe with the absolute path. 
+    """
+    dataframe = dataframe.copy()
+    dataframe[new_absolute_column] = dataframe[column_with_relative_dir].apply(lambda x: path_handler(basedir, x))
+    if drop_relative and (new_absolute_column != column_with_relative_dir):
+        dataframe = dataframe.drop(columns=(column_with_relative_dir))
+
+    return dataframe

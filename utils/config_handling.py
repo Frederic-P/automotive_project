@@ -6,6 +6,8 @@
 
 import configparser
 import os
+from database import Database
+
 
 def read_config(name):
     """
@@ -21,3 +23,27 @@ def read_config(name):
     config.read(config_path)
     return config
 
+
+
+def applyconf(dir): 
+    # Load configuration
+    config = read_config(dir)
+    config.read('config.ini')
+    connection_type = config['settings']['connection']
+    user = config[connection_type]['user']
+    pw = config[connection_type]['pw']
+    host = config[connection_type]['host']
+    db = config[connection_type]['db']
+    port = config[connection_type].getint('port')
+    db = Database(host,
+                port,
+                user,
+                pw,
+                db
+                )
+    db.connect()
+
+    # Image directory
+    basedir = config['settings']['image_directory']
+
+    return [basedir, db]
