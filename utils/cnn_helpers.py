@@ -3,6 +3,8 @@ import os
 import tensorflow as tf
 import numpy as np
 import random 
+import shutil
+from pathlib import Path
 
 def preprocess_image(image_path, use_bounding_box=False, bbox=None, size=64):
     # Function to preprocess image data for CNN; applies boundingvox
@@ -178,3 +180,15 @@ def image_generator(batch_size, data_frame, bboxs, shape, y_train_encoded):
             batch_images.append(img)
             batch_labels.append(y_train_encoded[idx])  # Make sure y_train_encoded corresponds to the correct index
         yield np.array(batch_images), np.array(batch_labels)
+
+def wipe_folder(folder): 
+    """
+        Takes a path to a folder as argument and wipes the folder. Usefull for wiping 
+        old augmentation data and models of lower epochs. 
+
+        Will then recreate the folder
+        (quicker than deleting file by file or recursive operation)
+    """
+    if os.path.exists(folder):
+        shutil.rmtree(Path(folder))
+    os.makedirs(folder, exist_ok=True)
