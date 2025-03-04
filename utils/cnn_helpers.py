@@ -5,6 +5,8 @@ import numpy as np
 import random 
 import shutil
 from pathlib import Path
+import config_handling as conf
+
 
 def preprocess_image(image_path, use_bounding_box=False, bbox=None, size=64):
     # Function to preprocess image data for CNN; applies boundingvox
@@ -189,6 +191,32 @@ def wipe_folder(folder):
         Will then recreate the folder
         (quicker than deleting file by file or recursive operation)
     """
+    protected_folder = conf.read_config('../../config/automotive.conf.ini')['settings']['image_directory']
+    if folder ==  protected_folder: 
+        print("can't wipe {folder}")
+        return 
     if os.path.exists(folder):
         shutil.rmtree(Path(folder))
     os.makedirs(folder, exist_ok=True)
+
+def shuffle_df(df, rs = False): 
+    """takes a dataframe (df) and random state value (int) and returns a shuffled copy of your given dataframe."""
+    df = df.copy()
+    if rs == False:
+        return df.sample(frac=1).reset_index(drop=True)
+    else: 
+        return df.sample(frac=1, random_state=rs).reset_index(drop=True)
+
+
+def ordinal_encoder_to_dict(oe): 
+    """takes an ordinal encoder and returns a python Dictionary with integer keys and label values"""
+    labels = oe.categories[0]    
+    integers = oe.transform([[x] for x in labels]).flatten()
+    d = {}
+    for k,v in zip(integers, labels):
+        d[int(k)] = v
+    return d
+
+def dict_to_json(dict, target):
+    #todo
+    pass
