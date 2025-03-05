@@ -2,6 +2,10 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 import os
 from tqdm import tqdm
+import json
+from pathlib import Path
+import config_handling as conf
+
 
 
 def path_handler(root_dir, path_as_string):
@@ -67,3 +71,69 @@ def make_absolute_path(dataframe, basedir, column_with_relative_dir, new_absolut
         dataframe = dataframe.drop(columns=(column_with_relative_dir))
 
     return dataframe
+
+def dict_to_json_file(dictionary, dir, filename): 
+    """Takes a python dictionary and dumps it to a JSON file.
+    argumentes:
+        - dictionary: A Python KV dictionary that can be serialized into JSON
+        - dir : string: Directory where the file should be stored
+        - filename: string: name of the JSON file to store the dict in.
+    """
+    os.makedirs(dir, exist_ok=True)
+    file_path = os.path.join(dir, filename)
+    with open(file_path, 'w') as json_file:
+        json.dump(dictionary, json_file, indent=4) 
+
+def wipe_folder(folder): 
+    """
+        Takes a path to a folder as argument and wipes the folder. Usefull for wiping 
+        old augmentation data and models of lower epochs. 
+
+        Will then recreate the folder
+        (quicker than deleting file by file or recursive operation)
+    """
+    protected_folder = conf.read_config('../../config/automotive.conf.ini')['settings']['image_directory']
+    if folder ==  protected_folder: 
+        print("can't wipe {folder}")
+        return 
+    if os.path.exists(folder):
+        shutil.rmtree(Path(folder))
+    os.makedirs(folder, exist_ok=True)
+
+def copy_model(sourcefile, targetdir, filename): 
+    """Copies a file to targetdir and renames it to a given name.
+    arguments:
+        - sourcefile: absolute or relative path to a file
+        - targetdir: directory where to copy a file to
+        - filename: new name of the copied file in targetdir
+    """
+    os.makedirs(targetdir, exist_ok=True)
+    targetfile = os.path.join(targetdir, filename)
+    shutil.copy(sourcefile, targetfile)
+
+
+def write_readme(targetdir, message): 
+    """Create a README.txt file in the given directory
+    argument:
+        - targetdir: string: path where the readme should be created
+        - message: string: message to write.
+    """
+
+    os.makedirs(targetdir, exist_ok=True)
+    targetfile = os.path.join(targetdir, 'README.txt')
+    with open(targetfile, 'w+') as f:
+        f.write(message)
+
+def get_folder_content(dir): 
+    """Lists the content of a directory according to asscending create time stamp (ctime)
+    arugment: 
+        dir: str: path to folder that you want to list
+
+    returns:
+        content: list of filenames with absolute path in sorted order 
+                 from oldest createtime to most recent create time.
+    """
+    models = os.listdir(dir)
+    model_paths = [os.path.join(dir, f) for f in models if os.path.isfile(os.path.join(dir, f))]
+    content = sorted(model_paths, key=os.path.getctime)
+    return content

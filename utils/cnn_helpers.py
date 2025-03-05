@@ -4,8 +4,6 @@ import tensorflow as tf
 import numpy as np
 import random 
 import shutil
-from pathlib import Path
-import config_handling as conf
 
 
 def preprocess_image(image_path, use_bounding_box=False, bbox=None, size=64):
@@ -183,21 +181,7 @@ def image_generator(batch_size, data_frame, bboxs, shape, y_train_encoded):
             batch_labels.append(y_train_encoded[idx])  # Make sure y_train_encoded corresponds to the correct index
         yield np.array(batch_images), np.array(batch_labels)
 
-def wipe_folder(folder): 
-    """
-        Takes a path to a folder as argument and wipes the folder. Usefull for wiping 
-        old augmentation data and models of lower epochs. 
 
-        Will then recreate the folder
-        (quicker than deleting file by file or recursive operation)
-    """
-    protected_folder = conf.read_config('../../config/automotive.conf.ini')['settings']['image_directory']
-    if folder ==  protected_folder: 
-        print("can't wipe {folder}")
-        return 
-    if os.path.exists(folder):
-        shutil.rmtree(Path(folder))
-    os.makedirs(folder, exist_ok=True)
 
 def shuffle_df(df, rs = False): 
     """takes a dataframe (df) and random state value (int) and returns a shuffled copy of your given dataframe."""
@@ -217,6 +201,4 @@ def ordinal_encoder_to_dict(oe):
         d[int(k)] = v
     return d
 
-def dict_to_json(dict, target):
-    #todo
-    pass
+
