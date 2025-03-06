@@ -144,7 +144,7 @@ def augm_stretch_image_and_bbox(image, bbox, max_stretch=0.10):
 
 def cast_bbox_values(df, bboxcolumns= ['yolobox_top_left_x', 'yolobox_top_left_y', 'yolobox_bottom_right_x', 'yolobox_bottom_right_y']):
     df = df.copy()
-    df = df.fillna(-1)
+    df = df.fillna('-1')  #to suppres a futurewarning in pandas.
     df[bboxcolumns] = df[bboxcolumns].astype(int)
     return df
 
@@ -202,3 +202,14 @@ def ordinal_encoder_to_dict(oe):
     return d
 
 
+def load_one_model(dir, extension = '.keras'):
+    """
+    Loads a model with a specific extension for a directory. This method is only 
+    intended for directories with a single model stored in them.
+    """
+    models = [f for f in os.listdir(dir) if f.endswith(extension)]
+    assert len(models) > 0
+    model = models[0]
+    modeldir = os.path.join(dir, model)
+    loaded_model = tf.keras.models.load_model(modeldir)
+    return loaded_model
