@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 import random 
 import shutil
+from sklearn.model_selection import train_test_split
+
 
 
 def preprocess_image(image_path, use_bounding_box=False, bbox=None, size=64):
@@ -133,6 +135,36 @@ def augm_stretch_image_and_bbox(image, bbox, max_stretch=0.10):
     return stretched_image, updated_bbox
 
 
+def augm_mirror_image(source, targetpath, name, given): 
+    """
+    AUGMENTATION FUNCTION: 
+        helps to provide more class balance by mirroring an image over the y-axis. 
+        Is intended to be used to help boost class balances for predicting brands
+        and models. It does not follow the same desing preinciple as the other
+        augmentation functions because of that. 
+        DOES NOT STORE THE IMAGE
+
+    Parameter: 
+        source: str: Fully qualified path to the image.
+        targetpath: str: Fully qualified path to the folder where augmentated data is store.
+        name: str: Name of the augmentated file. 
+        given: str: label of the current image
+
+    returns:
+        new_label: str: new label (right/left.)
+    """
+    if given == 'left':
+        new_label = 'right'
+    elif given == 'right':
+        new_label = 'left'
+    else:
+        raise ValueError(f"Mirroring of images with label {given} is not allowed.")
+    img = cv2.imread(source)
+    mirrored_img = cv2.flip(img, 1)
+    os.makedirs(targetpath, exist_ok=True)
+    cv2.imwrite(os.path.join(targetpath, name), mirrored_img)
+    return new_label
+
 # def load_data(df, use_bounding_boxes=False):
 #     images = []
 #     for _, row in tqdm(df.iterrows()):
@@ -213,3 +245,31 @@ def load_one_model(dir, extension = '.keras'):
     modeldir = os.path.join(dir, model)
     loaded_model = tf.keras.models.load_model(modeldir)
     return loaded_model
+
+
+def train_test_val_splitter(df, trainratio, testratio, valratio, stratcols = False): 
+    """takes a pandas df and splits it in three dfs according to the 
+    given ratios. Optionally it uses tratified splitting columns defined in stratcols.
+    arguments: 
+    df (pandas dataframe)
+    trainratio; (int): how many percent of df should end up in trainset
+    testratio: (int): how many percent of df should end up in testset
+    valratio: (int): how many percent of df should end up in valratio
+    stratcols: (list): list of column names to perform a stratified split on. 
+    """
+    assert(trainratio+testratio+valratio == 100)
+    if stratcols:
+        train_data, remaining_data = train_test_split(
+            df, test_size=(100 - trainratio) / 100, stratify=df[stratcols], random_state=42
+        )
+        test_data, val_data = train_test_split(
+            remaining_data, test_size=valratio / (testratio + valratio), stratify=remaining_data[stratcols], random_state=42
+        )
+    else:
+        train_data, remaining_data = train_test_split(
+            df, test_size=(100 - trainratio) / 100, random_state=42
+        )
+        test_data, val_data = train_test_split(
+            remaining_data, test_size=valratio / (testratio + valratio), random_state=42
+        )
+    return train_data, test_data, val_data
