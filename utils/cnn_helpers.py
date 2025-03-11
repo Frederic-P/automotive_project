@@ -5,6 +5,7 @@ import numpy as np
 import random 
 import shutil
 from sklearn.model_selection import train_test_split
+import uuid
 
 
 
@@ -273,3 +274,53 @@ def train_test_val_splitter(df, trainratio, testratio, valratio, stratcols = Fal
             remaining_data, test_size=valratio / (testratio + valratio), random_state=42
         )
     return train_data, test_data, val_data
+
+
+def augment(sampled_df, augment_dir): 
+    """
+        Takes a pandas dataframe containing a single row and performs a random (set of)
+        augmentations on it. 
+
+        Parameters:
+            sampled_df (df): a pandas dataframe of whicht the first row only will be processed!!
+            augment_dir str: Fully qualified path of the directory where the augmented file will be stored. 
+    """
+    row = sampled_df.iloc[0].copy()
+    impath = row['abs_path']
+    uuid_v4 = str(uuid.uuid4())
+    new_name = uuid_v4 + '.' + impath.split('.')[-1]
+    coords = (row['yolobox_top_left_x'], row['yolobox_top_left_y'], row['yolobox_bottom_right_x'], row['yolobox_bottom_right_y'])
+    image = cv2.imread(impath)
+    augmented_path = os.path.join(augment_dir, new_name)
+    os.makedirs(os.path.dirname(augmented_path), exist_ok=True)
+
+    base_action = random.randint(0,100)
+    #80% of images has only ONE mutation
+    #15% has TWO mutations
+    # 5% of images has THREE mutatations applied. 
+    mutation_options = [0, 1, 2]
+    if base_action < 85: 
+        mutations = random.sample(mutation_options, 1)         #pick ONE mutation
+    elif base_action < 95: 
+        mutations = random.sample(mutation_options, 2)         #pick TWO mutations
+    else:
+        mutations = random.sample(mutation_options, len(mutation_options))              #Perform ALL THREE mutations in random order.
+    modded_img = image.copy()
+    for mutation in mutations: 
+        if mutation == 0: 
+            modded_img = augm_channel_shuffle(modded_img)
+        elif mutation == 1:
+            sigma = random.randint(40, 80)
+            modded_img = augm_add_random_noise(modded_img, 0, sigma)
+        else:
+            stretch = random.uniform(0.8, 1.3)
+            modded_img, coords = augm_stretch_image_and_bbox(modded_img, coords, stretch)
+    #print(type(modded_img))
+    #print(modded_img.shape())
+    cv2.imwrite(augmented_path, modded_img)
+    row['abs_path'] = augmented_path
+    row['yolobox_top_left_x'] = coords[0]
+    row['yolobox_top_left_y'] = coords[1]
+    row['yolobox_bottom_right_x'] = coords[2]
+    row['yolobox_bottom_right_y'] = coords[3]
+    return row  

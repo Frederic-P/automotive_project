@@ -5,6 +5,7 @@ from tqdm import tqdm
 import json
 from pathlib import Path
 import config_handling as conf
+import pandas as pd
 
 
 
@@ -137,3 +138,9 @@ def get_folder_content(dir):
     model_paths = [os.path.join(dir, f) for f in models if os.path.isfile(os.path.join(dir, f))]
     content = sorted(model_paths, key=os.path.getctime)
     return content
+
+def table_to_csv(table, dir, name, with_index=False): 
+    """
+    
+    """
+    table.to_csv(os.path.join(dir, name), index = with_index)
