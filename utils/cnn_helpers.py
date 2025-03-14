@@ -1,11 +1,17 @@
 import cv2
 import os
 import tensorflow as tf
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras import layers, models
+from tensorflow.keras.optimizers import AdamW
 import numpy as np
 import random 
 import shutil
 from sklearn.model_selection import train_test_split
 import uuid
+
+
 
 
 
@@ -324,3 +330,76 @@ def augment(sampled_df, augment_dir):
     row['yolobox_bottom_right_x'] = coords[2]
     row['yolobox_bottom_right_y'] = coords[3]
     return row  
+
+
+def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs):
+    train_gen = image_generator(
+        batch_size=batchsize, 
+        data_frame=X_train, 
+        bboxs=apply_crop, 
+        shape=shape, 
+        y_train_encoded=y_train
+    )
+
+    #Split validation separately
+    val_gen = image_generator(
+        batch_size=batchsize, 
+        data_frame=X_test, 
+        bboxs=apply_crop, 
+        shape=shape, 
+        y_train_encoded=y_test
+    )
+    base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(shape, shape, 3))
+    base_model.trainable = False
+
+    model = models.Sequential([
+        base_model,  # resnet50
+        layers.GlobalAveragePooling2D(), 
+        layers.Dense(256, activation='relu'),
+        layers.Dense(y_train.nunique(), activation='softmax') 
+    ])
+    #sparse_categorical_crossentropy no need to use OHE with sparse_categorical_crossentropy!!!!
+    model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    early_stopping = EarlyStopping(
+        monitor='val_loss', 
+        patience=6, 
+        restore_best_weights=True
+    )
+    lr_scheduler = ReduceLROnPlateau(
+        monitor='val_loss', 
+        factor=0.5, 
+        patience=3, 
+        min_lr=1e-6, 
+        verbose=1
+    )
+    model_checkpoint = ModelCheckpoint(
+        os.path.join(storagefolder, 'disposable_dump_of_brand_model.keras'),
+        'model_epoch_{epoch:02d}.h5',  # Save model with epoch number
+        #monitor='val_loss',            # Save based on validation loss
+        save_best_only=False,          # Save after every epoch; so I can resume from crash!!
+        mode='min',
+        save_weights_only=False,       # Save the full model, not just the weights
+        verbose=0
+    )
+
+    model.fit(
+        train_gen, 
+        steps_per_epoch=len(X_train) // batchsize,  # Number of batches per epoch
+        epochs=max_epochs,
+        validation_data=val_gen, 
+        validation_steps=len(X_test) // batchsize,  # Number of validation batches per epoch
+        callbacks=[lr_scheduler, early_stopping, model_checkpoint]  # Use the learning rate scheduler callback
+    )
+
+    #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
+    base_model.trainable = True
+    model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.fit(
+        train_gen, 
+        steps_per_epoch=len(X_train) // batchsize, 
+        epochs=max_epochs,
+        validation_data=val_gen,
+        validation_steps=len(X_test) // batchsize,
+        callbacks=[lr_scheduler, early_stopping, model_checkpoint]
+    )    
+    return model
