@@ -403,3 +403,9 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         callbacks=[lr_scheduler, early_stopping, model_checkpoint]
     )    
     return model
+
+def get_X_y(df, target, drop = []): 
+    drop.append(target)
+    X = df.drop(columns=drop)
+    y = df[target]
+    return [X, y]
