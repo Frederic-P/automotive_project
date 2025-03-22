@@ -6,12 +6,12 @@ from tensorflow.keras.applications import ResNet50
 from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import AdamW
 import numpy as np
+import pandas as pd
 import random 
 import shutil
 from sklearn.model_selection import train_test_split
 import uuid
-
-
+from datetime import datetime
 
 
 
@@ -331,6 +331,47 @@ def augment(sampled_df, augment_dir):
     row['yolobox_bottom_right_y'] = coords[3]
     return row  
 
+def datetimestring():
+    current_datetime = datetime.now()
+    return current_datetime.strftime('%d-%m-%Y %H:%M:%S')
+
+def write_msg_to_log(message, logpath):
+    """
+        Writes a message (str) to a file (logpath) with the datetimestring
+        quickly implemented to identify training bottleneck in between epochs. 
+        I'm currently suspecting the checkpoints, which can be commented out
+        or a slowdown in the validation phase - which is something I'll have 
+        to learn to live with.
+        arguments:
+            message = str: 'The message to write to a logfile.
+            logpath = str: absolute path to a logfile. path must exist, 
+            doesn't matter if the file exists.
+    """
+    with open(logpath, 'a+', encoding='utf8') as f:
+        message = f'{datetimestring()} - {message}'
+        f.write(message)
+        f.write('\r\n')
+
+
+def reducer(df, max_samples, by):
+    """Training gets stuck when using the testdata during the traininprocess
+    as the models get more complex; in stead of using the full testset, this 
+    function will subsample it in smaller sections using a random selection
+    It'll keep procentually more of smaller 'by' values 
+    
+    """
+    sampled = []
+    for _, group in df.groupby(by):
+        if max_samples > len(group):
+            samplesize = len(group)
+        else:
+            samplesize = max_samples
+        small_df = group.sample(samplesize)
+        sampled.append(small_df)
+    small_df =  pd.concat(sampled).reset_index(drop=True)
+    small_df = shuffle_df(small_df)
+    return small_df
+
 
 def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs):
     train_gen = image_generator(
@@ -340,7 +381,6 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         shape=shape, 
         y_train_encoded=y_train
     )
-
     #Split validation separately
     val_gen = image_generator(
         batch_size=batchsize, 
@@ -373,13 +413,13 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         verbose=1
     )
     model_checkpoint = ModelCheckpoint(
-        os.path.join(storagefolder, 'disposable_dump_of_brand_model.keras'),
-        'model_epoch_{epoch:02d}.h5',  # Save model with epoch number
-        #monitor='val_loss',            # Save based on validation loss
-        save_best_only=False,          # Save after every epoch; so I can resume from crash!!
-        mode='min',
+        os.path.join(storagefolder, 'disposable_dump_of_brand_model_epoch_{epoch:02d}_val_loss_{val_loss:.4f}.keras'),
+        #'model_epoch_{epoch:02d}.h5',  # Save model with epoch number
+        monitor='val_accuracy',            # Save based on validation accuracy
+        save_best_only=True,          # Save best only
+        mode='max',
         save_weights_only=False,       # Save the full model, not just the weights
-        verbose=0
+        verbose=1
     )
 
     model.fit(
@@ -388,7 +428,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         epochs=max_epochs,
         validation_data=val_gen, 
         validation_steps=len(X_test) // batchsize,  # Number of validation batches per epoch
-        callbacks=[lr_scheduler, early_stopping, model_checkpoint]  # Use the learning rate scheduler callback
+        callbacks=[lr_scheduler, early_stopping, model_checkpoint]
     )
 
     #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
