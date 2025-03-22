@@ -389,17 +389,32 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         shape=shape, 
         y_train_encoded=y_test
     )
-    base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(shape, shape, 3))
-    base_model.trainable = False
 
-    model = models.Sequential([
-        base_model,  # resnet50
-        layers.GlobalAveragePooling2D(), 
-        layers.Dense(256, activation='relu'),
-        layers.Dense(y_train.nunique(), activation='softmax') 
-    ])
-    #sparse_categorical_crossentropy no need to use OHE with sparse_categorical_crossentropy!!!!
-    model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    #check if we have a checkpoint: 
+    checkpoint_files = [f for f in os.listdir(storagefolder) if 'dump' in f and f.endswith('.keras')]
+    checkpoint = False
+    if len(checkpoint_files) > 0:
+        #google drive will return the last created checkpooint if you use -1
+        checkpoint = checkpoint_files[-1]
+        print(f'CHECKPOINT found')
+
+    if not checkpoint:
+        print('NO checkpoint file present, starting from a base ResNet model')
+        base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(shape, shape, 3))
+        base_model.trainable = False
+        model = models.Sequential([
+            base_model,  # resnet50
+            layers.GlobalAveragePooling2D(), 
+            layers.Dense(256, activation='relu'),
+            layers.Dense(y_train.nunique(), activation='softmax') 
+        ])
+        #sparse_categorical_crossentropy no need to use OHE with sparse_categorical_crossentropy!!!!
+        model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    else: 
+        model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
+        base_model = model.layers[0]    # now you know if the layer was frozen before or not.
+
     early_stopping = EarlyStopping(
         monitor='val_loss', 
         patience=6, 
@@ -413,7 +428,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         verbose=1
     )
     model_checkpoint = ModelCheckpoint(
-        os.path.join(storagefolder, 'disposable_dump_of_brand_model_epoch_{epoch:02d}_val_loss_{val_loss:.4f}.keras'),
+        os.path.join(storagefolder, 'disposable_dump_of_brand_model_epoch_{epoch:02d}__val_loss_{val_loss:.4f}.keras'),
         #'model_epoch_{epoch:02d}.h5',  # Save model with epoch number
         monitor='val_accuracy',            # Save based on validation accuracy
         save_best_only=True,          # Save best only
@@ -422,18 +437,30 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         verbose=1
     )
 
-    model.fit(
-        train_gen, 
-        steps_per_epoch=len(X_train) // batchsize,  # Number of batches per epoch
-        epochs=max_epochs,
-        validation_data=val_gen, 
-        validation_steps=len(X_test) // batchsize,  # Number of validation batches per epoch
-        callbacks=[lr_scheduler, early_stopping, model_checkpoint]
-    )
+    # Check if the base model was frozen or unfrozen
+    if base_model.trainable:
+        print("Base model layers are unfrozen. Fine-tuning the base model.")
+        first_fit = False  # We need to fine-tune
+    else:
+        print("Base model layers are frozen. Training the new layers first.")
+        first_fit = True  # We only train the new layers initially
 
-    #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
-    base_model.trainable = True
-    model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    #only do this first fit if you have forzen base layers: (unfreeze after that completes.)
+    if first_fit:
+        model.fit(
+            train_gen, 
+            steps_per_epoch=len(X_train) // batchsize,  # Number of batches per epoch
+            epochs=max_epochs,
+            validation_data=val_gen, 
+            validation_steps=len(X_test) // batchsize,  # Number of validation batches per epoch
+            callbacks=[lr_scheduler, early_stopping, model_checkpoint]
+        )
+
+        #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
+        base_model.trainable = True
+        model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    
+    #This is the second fit for unfrozen base layer. 
     model.fit(
         train_gen, 
         steps_per_epoch=len(X_train) // batchsize, 
