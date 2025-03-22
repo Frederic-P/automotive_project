@@ -373,6 +373,26 @@ def reducer(df, max_samples, by):
     return small_df
 
 
+def save_optimizer_state(model, storagefolder, checkpoint_file):
+    """Save optimizer state (learning rate) to a file."""
+    optimizer_config = model.optimizer.get_config()
+    with open(os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}.json'), 'w') as f:
+        json.dump(optimizer_config, f)
+
+def load_optimizer_state(model, storagefolder, checkpoint_file):
+    """Restore optimizer state (learning rate) from a file."""
+    optimizer_state_file = os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}.json')
+    if os.path.exists(optimizer_state_file):
+        with open(optimizer_state_file, 'r') as f:
+            optimizer_config = json.load(f)
+        optimizer = AdamW.from_config(optimizer_config)  # Reinitialize optimizer with saved state
+        model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        print("Optimizer state restored.")
+    else:
+        print("No optimizer state file found. Using default optimizer settings.")
+
+
+
 def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs):
     train_gen = image_generator(
         batch_size=batchsize, 
@@ -414,6 +434,9 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
     else: 
         model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
         base_model = model.layers[0]    # now you know if the layer was frozen before or not.
+
+        load_optimizer_state(model, storagefolder, checkpoint)
+
 
     early_stopping = EarlyStopping(
         monitor='val_loss', 
@@ -469,6 +492,9 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         validation_steps=len(X_test) // batchsize,
         callbacks=[lr_scheduler, early_stopping, model_checkpoint]
     )    
+
+    save_optimizer_state(model, storagefolder, checkpoint)
+
     return model
 
 def get_X_y(df, target, drop = []): 
