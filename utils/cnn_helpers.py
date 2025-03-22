@@ -374,17 +374,29 @@ def reducer(df, max_samples, by):
     return small_df
 
 
-def save_optimizer_state(model, storagefolder, checkpoint_file):
-    """Save optimizer state (learning rate) to a file."""
+def save_optimizer_state(model, storagefolder, checkpoint_file, i):
+    """Save optimizer state (learning rate) to a file.
+    
+
+        //BUG: modelcheckpoint generates name of dump. need it here to link the json dump
+        with the right model.  //PATCHED - pending test
+    """
+
+
     optimizer_config = model.optimizer.get_config()
-    with open(os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}.json'), 'w') as f:
+    with open(os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}__{i}.json'), 'w') as f:
         json.dump(optimizer_config, f)
 
-def load_optimizer_state(model, storagefolder, checkpoint_file):
+def load_optimizer_state(model, storagefolder, checkpoint_file, iter):
     """Restore optimizer state (learning rate) from a file.
         WARNING: ONLY USE WITH ADAMW!!
+
+    //BUG: related to issue in load_optimizer_state: you should load the 
+    json file with the highest value in the name.
+    //PATCH implemented, test needed.
     """
-    optimizer_state_file = os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}.json')
+    optimizer_files = os.listsdir(storagefolder)
+    optimizer_state_file = [file for file in optimizer_files if '__'+str(iter)+'.keras' in file]  #//TODO test required
     if os.path.exists(optimizer_state_file):
         with open(optimizer_state_file, 'r') as f:
             optimizer_config = json.load(f)
@@ -414,6 +426,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         shape=shape, 
         y_train_encoded=y_test
     )
+    iter = 0
 
 
     #check if we have a checkpoint: 
@@ -439,8 +452,11 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
     else: 
         model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
         base_model = model.layers[0]    # now you know if the layer was frozen before or not.
-
-        load_optimizer_state(model, storagefolder, checkpoint)
+        model_weights_files = os.listdir(storagefolder)
+        json_files = [file for file in model_weights_files if file.endswith('.json')]
+        all_iters = [int(i) for i.split('__')[1].split('.json')[0] in json_files]
+        iter = max(all_iters)
+        load_optimizer_state(model, storagefolder, checkpoint, iter)
 
 
     early_stopping = EarlyStopping(
@@ -497,8 +513,8 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         validation_steps=len(X_test) // batchsize,
         callbacks=[lr_scheduler, early_stopping, model_checkpoint]
     )    
-
-    save_optimizer_state(model, storagefolder, checkpoint)
+    iter += 1
+    save_optimizer_state(model, storagefolder, iter)
 
     return model
 
