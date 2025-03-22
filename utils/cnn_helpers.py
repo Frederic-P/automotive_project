@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import random 
 import shutil
+import json
 from sklearn.model_selection import train_test_split
 import uuid
 from datetime import datetime
@@ -380,11 +381,15 @@ def save_optimizer_state(model, storagefolder, checkpoint_file):
         json.dump(optimizer_config, f)
 
 def load_optimizer_state(model, storagefolder, checkpoint_file):
-    """Restore optimizer state (learning rate) from a file."""
+    """Restore optimizer state (learning rate) from a file.
+        WARNING: ONLY USE WITH ADAMW!!
+    """
     optimizer_state_file = os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}.json')
     if os.path.exists(optimizer_state_file):
         with open(optimizer_state_file, 'r') as f:
             optimizer_config = json.load(f)
+            print("Configuration or lr scheduler:")
+            print(json.dumps(optimizer_config, indent=4)) 
         optimizer = AdamW.from_config(optimizer_config)  # Reinitialize optimizer with saved state
         model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         print("Optimizer state restored.")
