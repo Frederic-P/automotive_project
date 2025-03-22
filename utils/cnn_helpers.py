@@ -1,7 +1,7 @@
 import cv2
 import os
 import tensorflow as tf
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, Callback
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import AdamW
@@ -13,6 +13,19 @@ import json
 from sklearn.model_selection import train_test_split
 import uuid
 from datetime import datetime
+
+
+class OptimizerStateSaver(Callback):
+    #https://keras.io/guides/writing_your_own_callbacks/ 
+    def __init__(self, storagefolder, phase=0):
+        super().__init__()
+        self.storagefolder = storagefolder
+        self.phase = phase #0 = Frozen base; 1 = unfrozen base
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Increment the iteration counter at the end of each epoch
+        print(f"Saving optimizer state for phase {self.phase} - epcoh {epoch}.")
+        save_optimizer_state(self.model, self.storagefolder, f'checkpoint_epoch_{epoch}', self.phase)
 
 
 
@@ -374,29 +387,32 @@ def reducer(df, max_samples, by):
     return small_df
 
 
-def save_optimizer_state(model, storagefolder, checkpoint_file, i):
+def save_optimizer_state(model, storagefolder, epoch, frozenstate):
     """Save optimizer state (learning rate) to a file.
     
 
         //BUG: modelcheckpoint generates name of dump. need it here to link the json dump
         with the right model.  //PATCHED - pending test
     """
-
+    print(f'received epcoh {epoch} and state {frozenstate}')
 
     optimizer_config = model.optimizer.get_config()
-    with open(os.path.join(storagefolder, f'optimizer_state_{checkpoint_file}__{i}.json'), 'w') as f:
+    name = f'lr_optimizer__state_{frozenstate}__epoch_{epoch}.json'
+    with open(os.path.join(storagefolder, name), 'w') as f:
         json.dump(optimizer_config, f)
 
-def load_optimizer_state(model, storagefolder, checkpoint_file, iter):
+def load_optimizer_state(model, storagefolder, epoch, frozenstate):
     """Restore optimizer state (learning rate) from a file.
         WARNING: ONLY USE WITH ADAMW!!
 
     //BUG: related to issue in load_optimizer_state: you should load the 
     json file with the highest value in the name.
     //PATCH implemented, test needed.
+
+    #TODO!
     """
-    optimizer_files = os.listsdir(storagefolder)
-    optimizer_state_file = [file for file in optimizer_files if '__'+str(iter)+'.keras' in file]  #//TODO test required
+    name = f'lr_optimizer__state_{frozenstate}__epoch_{epoch}.json'
+    optimizer_state_file = os.path.join(storagefolder, name)
     if os.path.exists(optimizer_state_file):
         with open(optimizer_state_file, 'r') as f:
             optimizer_config = json.load(f)
@@ -426,7 +442,6 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         shape=shape, 
         y_train_encoded=y_test
     )
-    iter = 0
 
 
     #check if we have a checkpoint: 
@@ -452,12 +467,6 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
     else: 
         model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
         base_model = model.layers[0]    # now you know if the layer was frozen before or not.
-        model_weights_files = os.listdir(storagefolder)
-        json_files = [file for file in model_weights_files if file.endswith('.json')]
-        all_iters = [int(i) for i.split('__')[1].split('.json')[0] in json_files]
-        iter = max(all_iters)
-        load_optimizer_state(model, storagefolder, checkpoint, iter)
-
 
     early_stopping = EarlyStopping(
         monitor='val_loss', 
@@ -488,33 +497,35 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
     else:
         print("Base model layers are frozen. Training the new layers first.")
         first_fit = True  # We only train the new layers initially
+    print('\n\nWARNING: \n Load optimizer state not implemented yet!!')#TODO
 
     #only do this first fit if you have forzen base layers: (unfreeze after that completes.)
     if first_fit:
+        optimizer_state_saver = OptimizerStateSaver(storagefolder, 0)
         model.fit(
             train_gen, 
             steps_per_epoch=len(X_train) // batchsize,  # Number of batches per epoch
             epochs=max_epochs,
             validation_data=val_gen, 
             validation_steps=len(X_test) // batchsize,  # Number of validation batches per epoch
-            callbacks=[lr_scheduler, early_stopping, model_checkpoint]
+            callbacks=[lr_scheduler, early_stopping, model_checkpoint, optimizer_state_saver]
         )
 
         #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
         base_model.trainable = True
         model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    
+    print('compiled model with unfrozen layers;')
     #This is the second fit for unfrozen base layer. 
+    optimizer_state_saver = OptimizerStateSaver(storagefolder, 1)
+
     model.fit(
         train_gen, 
         steps_per_epoch=len(X_train) // batchsize, 
         epochs=max_epochs,
         validation_data=val_gen,
         validation_steps=len(X_test) // batchsize,
-        callbacks=[lr_scheduler, early_stopping, model_checkpoint]
+        callbacks=[lr_scheduler, early_stopping, model_checkpoint, optimizer_state_saver]
     )    
-    iter += 1
-    save_optimizer_state(model, storagefolder, iter)
 
     return model
 
