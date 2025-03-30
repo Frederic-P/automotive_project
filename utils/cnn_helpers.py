@@ -426,7 +426,8 @@ def load_optimizer_state(model, storagefolder, epoch, frozenstate):
 
 
 
-def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs):
+def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs, learning_rate = 0.001):
+    #0.001 learning rate is standard for adam(w) #SRC: https://keras.io/api/optimizers/adamw/
     train_gen = image_generator(
         batch_size=batchsize, 
         data_frame=X_train, 
@@ -463,7 +464,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
             layers.Dense(y_train.nunique(), activation='softmax') 
         ])
         #sparse_categorical_crossentropy no need to use OHE with sparse_categorical_crossentropy!!!!
-        model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=AdamW(learning_rate=learning_rate), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     else: 
         model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
         base_model = model.layers[0]    # now you know if the layer was frozen before or not.
@@ -513,7 +514,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
 
         #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
         base_model.trainable = True
-        model.compile(optimizer=AdamW(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=AdamW(learning_rate=learning_rate), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     print('compiled model with unfrozen layers;')
     #This is the second fit for unfrozen base layer. 
     optimizer_state_saver = OptimizerStateSaver(storagefolder, 1)
@@ -526,11 +527,25 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         validation_steps=len(X_test) // batchsize,
         callbacks=[lr_scheduler, early_stopping, model_checkpoint, optimizer_state_saver]
     )    
-
     return model
+
 
 def get_X_y(df, target, drop = []): 
     drop.append(target)
     X = df.drop(columns=drop)
     y = df[target]
     return [X, y]
+
+def convert_ndarrays_to_lists(obj):
+    """
+        converts the inferred results with numpy arrays back to
+        serializable JSON.
+    """
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()  # Convert ndarray to list
+    elif isinstance(obj, dict):
+        return {key: convert_ndarrays_to_lists(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_ndarrays_to_lists(item) for item in obj]
+    else:
+        return obj

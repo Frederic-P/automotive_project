@@ -82,7 +82,7 @@ def dict_to_json_file(dictionary, dir, filename):
     """
     os.makedirs(dir, exist_ok=True)
     file_path = os.path.join(dir, filename)
-    with open(file_path, 'w') as json_file:
+    with open(file_path, 'w+') as json_file:
         json.dump(dictionary, json_file, indent=4) 
 
 def wipe_folder(folder): 

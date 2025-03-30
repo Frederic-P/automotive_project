@@ -140,3 +140,4 @@ flask angle tagger/secret.txt
 
 #ignore the models direcotry: 
 models/*
+final models/*
