@@ -5,6 +5,9 @@
 
     Under imports you can set parameters for batch processing. 
 
+    Override for AMD gpus is required
+    Override of lzma on linux is also required
+
 """
 #basic modules
 import os
@@ -19,20 +22,36 @@ import config_handling as conf
 from database import Database
 import car_detection as cd
 from file_io import path_handler
+import platform_dependency as plf
 
 ##Batch processing config: 
-batch_size = 250
+BATCH_SIZE = 250
 
-if os.name == 'posix':
+detected_os = plf.get_platform()
+if detected_os == 'Linux':
     print('A unix system was detected, please follow these steps to patch a known UNIX bug:')
     print('https://askubuntu.com/questions/1299255/how-can-i-solve-no-module-named-lzma')
     input('To continue press enter')
 
-# Load the YOLO model
-yolomodel = YOLO('models/yolo/yolov8n.pt')  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
-
 # Load the project configuration: 
 config = conf.read_config('config/automotive.conf.ini')
+
+
+detected_gpu = plf.get_gpu_info()
+if detected_gpu == False:
+    print(f'Notebook detected {detected_os} as OS and will use CPU for tasks where it can be done')
+else:
+    print(f'Notebook detected {detected_os} as OS and will use the available {detected_gpu} GPU')
+    if detected_gpu != 'amd': 
+        print(f"{detected_gpu} GPU's were not tested - code required workarounds to get working on AMD - no guarantees given.")
+
+# Load the YOLO model
+yolo_path = os.path.join(config['directories']['root_dir'], config['directories']['yolo_path'])
+yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
+yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
+if detected_gpu == 'amd': 
+    yolomodel = plf.yolo_override(yolomodel)
+
 imdir = config['settings']['image_directory']
 
 #connect to database: 
@@ -65,9 +84,9 @@ def to_float(tensor):
 #find the lowest and highest id of non-processed-image rows:
 lowquery = "SELECT min(id) AS minrange, max(id) AS maxrange FROM images WHERE processed = 0;"
 imids = db.execute_query(lowquery)
-for id in tqdm(range(imids[0]['minrange'], imids[0]['maxrange'], batch_size)):
+for id in tqdm(range(imids[0]['minrange'], imids[0]['maxrange'], BATCH_SIZE)):
     batch = "SELECT id, image_path FROM images WHERE id BETWEEN %s AND %s AND processed = 0;"
-    batch_args = [id, id+batch_size]
+    batch_args = [id, id+BATCH_SIZE]
     batch_images = db.execute_query(batch, batch_args)
     db.start_transaction()
     for image in batch_images:
