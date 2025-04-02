@@ -401,28 +401,34 @@ def save_optimizer_state(model, storagefolder, epoch, frozenstate):
     with open(os.path.join(storagefolder, name), 'w') as f:
         json.dump(optimizer_config, f)
 
-def load_optimizer_state(model, storagefolder, epoch, frozenstate):
+def load_optimizer_state(storagefolder):
     """Restore optimizer state (learning rate) from a file.
         WARNING: ONLY USE WITH ADAMW!!
 
-    //BUG: related to issue in load_optimizer_state: you should load the 
-    json file with the highest value in the name.
-    //PATCH implemented, test needed.
-
-    #TODO!
+    Should just load the most recent .JSON dump.
     """
-    name = f'lr_optimizer__state_{frozenstate}__epoch_{epoch}.json'
+    name = [f for f in os.listdir(storagefolder) if f.endswith('.json')][0]#most recent file
     optimizer_state_file = os.path.join(storagefolder, name)
     if os.path.exists(optimizer_state_file):
         with open(optimizer_state_file, 'r') as f:
             optimizer_config = json.load(f)
             print("Configuration or lr scheduler:")
             print(json.dumps(optimizer_config, indent=4)) 
-        optimizer = AdamW.from_config(optimizer_config)  # Reinitialize optimizer with saved state
-        model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        print("Optimizer state restored.")
+        optimizer = AdamW(
+            learning_rate=optimizer_config["learning_rate"],
+            weight_decay=optimizer_config["weight_decay"],
+            beta_1=optimizer_config["beta_1"],
+            beta_2=optimizer_config["beta_2"],
+            epsilon=optimizer_config["epsilon"],
+            amsgrad=optimizer_config["amsgrad"],
+            clipnorm=optimizer_config["clipnorm"],
+            global_clipnorm=optimizer_config["global_clipnorm"],
+            clipvalue=optimizer_config["clipvalue"]
+        )
+        return optimizer
     else:
         print("No optimizer state file found. Using default optimizer settings.")
+        return False
 
 
 
@@ -454,7 +460,7 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         print(f'CHECKPOINT found')
 
     if not checkpoint:
-        print('NO checkpoint file present, starting from a base ResNet model')
+        print('NO checkpoint file present, starting from a base ResNet model')#requires frozen base
         base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(shape, shape, 3))
         base_model.trainable = False
         model = models.Sequential([
@@ -464,10 +470,21 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
             layers.Dense(y_train.nunique(), activation='softmax') 
         ])
         #sparse_categorical_crossentropy no need to use OHE with sparse_categorical_crossentropy!!!!
-        model.compile(optimizer=AdamW(learning_rate=learning_rate), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        optimizer = AdamW(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     else: 
         model = tf.keras.models.load_model(os.path.join(storagefolder, checkpoint))
         base_model = model.layers[0]    # now you know if the layer was frozen before or not.
+        #get the JSON dump of optimizer state loaded
+        optimizer = load_optimizer_state(storagefolder)  #returns false if theres' no json dump prsent.
+
+        if optimizer:
+            model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        else:
+            # If no optimizer state is found, fall back to the default AdamW with provided learning rate from args
+            optimizer = AdamW(learning_rate=learning_rate)
+            model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
 
     early_stopping = EarlyStopping(
         monitor='val_loss', 
@@ -498,7 +515,6 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
     else:
         print("Base model layers are frozen. Training the new layers first.")
         first_fit = True  # We only train the new layers initially
-    print('\n\nWARNING: \n Load optimizer state not implemented yet!!')#TODO
 
     #only do this first fit if you have forzen base layers: (unfreeze after that completes.)
     if first_fit:
@@ -513,8 +529,12 @@ def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagef
         )
 
         #the second .fit() method is with unfrozen base: this should be more precise for fine-tuning
+        #return to the original LR and start improving from there, then decrease again.
         base_model.trainable = True
+        #ignore the JSON FILE, start with big learning rates again on onfrozen baselayers. 
         model.compile(optimizer=AdamW(learning_rate=learning_rate), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    #if there's NO first_fit, then model.compile of previous statements get used. 
     print('compiled model with unfrozen layers;')
     #This is the second fit for unfrozen base layer. 
     optimizer_state_saver = OptimizerStateSaver(storagefolder, 1)
