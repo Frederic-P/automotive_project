@@ -4,7 +4,7 @@ import os
 from tqdm import tqdm
 import json
 from pathlib import Path
-import config_handling as conf
+from  configloader import Configloader
 import pandas as pd
 
 
@@ -93,7 +93,8 @@ def wipe_folder(folder):
         Will then recreate the folder
         (quicker than deleting file by file or recursive operation)
     """
-    protected_folder = conf.read_config('../../config/automotive.conf.ini')['settings']['image_directory']
+    config = Configloader()
+    protected_folder = config.get('settings', 'image_directory')
     if folder ==  protected_folder: 
         print("can't wipe {folder}")
         return 

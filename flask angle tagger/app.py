@@ -3,20 +3,20 @@ import os
 import json
 import sys
 sys.path.append('../utils')
-import config_handling as conf
+from  configloader import Configloader
 from database import Database
 from file_io import path_handler
 
 # Connect to database
-config = conf.read_config('../config/automotive.conf.ini')
-config.read('config.ini')
-connection_type = config['settings']['connection']
-connection_type
-user = config[connection_type]['user']
-pw = config[connection_type]['pw']
-host = config[connection_type]['host']
-db = config[connection_type]['db']
-port = config[connection_type].getint('port')
+config = Configloader()
+
+connection_type = config.get('settings', 'connection')
+
+user = config.get(connection_type, 'user')
+pw = config.get(connection_type, 'pw')
+host = config.get(connection_type, 'host')
+db = config.get(connection_type, 'db')
+port = int(config.get(connection_type, 'port'))
 db = Database(host,
               port,
               user,
@@ -26,27 +26,25 @@ db = Database(host,
 db.connect()
 
 #image directory: 
-basedir = config['settings']['image_directory']
+basedir = config.get('settings', 'image_directory')
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 def load_app_settings():
     result_dict = {}
-    with open('flask_settings.txt', 'r') as file:
-        for line in file:
-            # Strip whitespace and check if line is not empty
-            line = line.strip()
-            if line:
-                # Split the line into key and value
-                key, value = line.split(':', 1)  # Split only on the first colon
-                # Strip whitespace from key and value
-                result_dict[key] = value
+    #flask settings: 
+    flask_country_code = config.get('flask_angletagger', 'country_only')
+    result_dict['countrycode'] = flask_country_code
     return result_dict
 
-# Load credentials from secrets.txt
+# Load credentials
 def load_credentials():
-    with open('secret.txt', 'r') as f:
-        return f.read().strip().split(':')
+    ## Yes,... i know this does not allow for multiple users; but that doesn't matter this was just
+    #  to prevent random people from accessing the app if they would've managed to bruteforce the Telebit URL
+    #  (which is unlikely) that takes care of the port forwarding / tunneling.
+    flask_username = config.get('flask_angletagger', 'username')
+    flask_password = config.get('flask_angletagger', 'password')
+    return [flask_username, flask_password]
 
 username, password = load_credentials()
 app_settings = load_app_settings()

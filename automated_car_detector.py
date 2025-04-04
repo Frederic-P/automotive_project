@@ -18,7 +18,7 @@ import math
 
 import sys
 sys.path.append('utils')
-import config_handling as conf
+from  configloader import Configloader
 from database import Database
 import car_detection as cd
 from file_io import path_handler
@@ -34,7 +34,7 @@ if detected_os == 'Linux':
     input('To continue press enter')
 
 # Load the project configuration: 
-config = conf.read_config('config/automotive.conf.ini')
+config = Configloader()
 
 
 detected_gpu = plf.get_gpu_info()
@@ -46,22 +46,22 @@ else:
         print(f"{detected_gpu} GPU's were not tested - code required workarounds to get working on AMD - no guarantees given.")
 
 # Load the YOLO model
-yolo_path = os.path.join(config['directories']['root_dir'], config['directories']['yolo_path'])
+yolo_path = os.path.join(config.get('directories','root_dir'), config.get('directories', 'yolo_path'))
 yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
 yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
 if detected_gpu == 'amd': 
     yolomodel = plf.yolo_override(yolomodel)
 
-imdir = config['settings']['image_directory']
+imdir = config.get('settings','image_directory')
 
 #connect to database: 
-connection_type = config['settings']['connection']
-connection_type
-user = config[connection_type]['user']
-pw = config[connection_type]['pw']
-host = config[connection_type]['host']
-db = config[connection_type]['db']
-port = config[connection_type].getint('port')
+connection_type = config.get('settings', 'connection')
+
+user = config.get(connection_type, 'user')
+pw = config.get(connection_type, 'pw')
+host = config.get(connection_type, 'host')
+db = config.get(connection_type, 'db')
+port = int(config.get(connection_type, 'port'))
 db = Database(host,
               port,
               user,
@@ -71,7 +71,7 @@ db = Database(host,
 db.connect()
 
 #get basedir: 
-basedir = config['settings']['image_directory']
+basedir = config.get('settings', 'image_directory')
 #slave functions for data type conversion (tested in experimental notebook and this is fine!)
 def to_pixel(tensor): 
     v = math.ceil(tensor)

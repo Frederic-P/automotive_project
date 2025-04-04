@@ -18,21 +18,22 @@ import sys
 import time
 sys.path.append('utils')
 import os
-import config_handling as conf
+from  configloader import Configloader
 from multithread_image_ripper import download_images
 from database import Database
 
+
+config = Configloader()
+
 #DATABASE SECTION
 # Connect to database
-config = conf.read_config('config/automotive.conf.ini')
-config.read('config.ini')
-connection_type = config['settings']['connection']
-connection_type
-user = config[connection_type]['user']
-pw = config[connection_type]['pw']
-host = config[connection_type]['host']
-db = config[connection_type]['db']
-port = config[connection_type].getint('port')
+
+connection_type = config.get('settings', 'connection')
+user = config.get(connection_type, 'user')
+pw = config.get(connection_type, 'pw')
+host = config.get(connection_type, 'host')
+db = config.get(connection_type, 'db')
+port = int(config.get(connection_type, 'port'))
 db = Database(host,
               port,
               user,
@@ -44,7 +45,7 @@ db.start_transaction()
 
 #CONFIG SECTION 
 #image directory: 
-basedir = config['settings']['image_directory']
+basedir = config.get('settings', 'image_directory')
 
 #QUERY WRITING SECTION
 country_query = "SELECT DISTINCT countrycode FROM listings;"
