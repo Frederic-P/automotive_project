@@ -1,17 +1,24 @@
 """
     UTILITY CLASS TO INTERACT WITH THE DATABASE; DEALS WITH CONNECTION AND CRUD OPERATIONS
+    This class is designed to be used with a MYSQL backend and takes a configration instance
+    form the configloader.py class as input to automatically connect to the database.
+
+    Invalid configuration will result in a program error.
 """
 import pymysql
 import pymysql.cursors
 import pandas as pd
 
+
+
 class Database:
-    def __init__(self, host, port, user, password, database):
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
-        self.database = database
+    def __init__(self, configuration):
+        self.connection_type = configuration.get('settings', 'connection')
+        self.host = configuration.get(self.connection_type,'host')
+        self.port = int(configuration.get(self.connection_type,'port'))
+        self.user = configuration.get(self.connection_type, 'user')
+        self.password = configuration.get(self.connection_type,'pw')
+        self.database = configuration.get(self.connection_type,'db')
         self.connection = None
 
     def connect(self):

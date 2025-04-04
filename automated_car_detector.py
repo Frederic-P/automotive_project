@@ -55,19 +55,7 @@ if detected_gpu == 'amd':
 imdir = config.get('settings','image_directory')
 
 #connect to database: 
-connection_type = config.get('settings', 'connection')
-
-user = config.get(connection_type, 'user')
-pw = config.get(connection_type, 'pw')
-host = config.get(connection_type, 'host')
-db = config.get(connection_type, 'db')
-port = int(config.get(connection_type, 'port'))
-db = Database(host,
-              port,
-              user,
-              pw,
-              db
-              )
+db = Database(config)
 db.connect()
 
 #get basedir: 

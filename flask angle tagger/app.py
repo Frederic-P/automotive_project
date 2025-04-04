@@ -7,26 +7,16 @@ from  configloader import Configloader
 from database import Database
 from file_io import path_handler
 
-# Connect to database
+#get configuration loaded.
 config = Configloader()
 
-connection_type = config.get('settings', 'connection')
-
-user = config.get(connection_type, 'user')
-pw = config.get(connection_type, 'pw')
-host = config.get(connection_type, 'host')
-db = config.get(connection_type, 'db')
-port = int(config.get(connection_type, 'port'))
-db = Database(host,
-              port,
-              user,
-              pw,
-              db
-              )
+# Connect to database
+db = Database(config)
 db.connect()
 
 #image directory: 
 basedir = config.get('settings', 'image_directory')
+##FLASK: 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 

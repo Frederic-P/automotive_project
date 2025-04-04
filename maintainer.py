@@ -28,18 +28,7 @@ config = Configloader()
 #DATABASE SECTION
 # Connect to database
 
-connection_type = config.get('settings', 'connection')
-user = config.get(connection_type, 'user')
-pw = config.get(connection_type, 'pw')
-host = config.get(connection_type, 'host')
-db = config.get(connection_type, 'db')
-port = int(config.get(connection_type, 'port'))
-db = Database(host,
-              port,
-              user,
-              pw,
-              db
-              )
+db = Database(config)
 db.connect()
 db.start_transaction()
 
