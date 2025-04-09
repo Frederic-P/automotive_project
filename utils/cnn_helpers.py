@@ -569,3 +569,19 @@ def convert_ndarrays_to_lists(obj):
         return [convert_ndarrays_to_lists(item) for item in obj]
     else:
         return obj
+    
+
+def load_jsondump_to_encoder(dir, extension = '.json', key_to_int = True):
+    """Reads the first JSON file in a directory and retrusn it as a dict. Required for
+    decoding inferred results of the model that is in the directory. """
+    files = [f for f in os.listdir(dir) if f.endswith(extension)]
+    assert len(files) > 0
+    file = files[0]
+    filedir = os.path.join(dir, file)
+    print(filedir)
+    file = open(filedir, 'r', encoding='utf8')
+    content = json.load(file)
+    file.close()
+    if key_to_int: 
+        content = {int(k): v for k, v in content.items()}
+    return content
