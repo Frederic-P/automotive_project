@@ -4,7 +4,7 @@ Utility that handles plotting of images
 import matplotlib.pyplot as plt
 from PIL import Image
 import random
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, f1_score, cohen_kappa_score
 import numpy as np
 
 def plot_images_as_grid(imseries, title, n=4, imtitles=None): 
@@ -85,3 +85,15 @@ def make_cm(act, pred, labels):
     plt.xlabel("Predicted Labels")
     plt.ylabel("Actual Labels")
     return plt
+
+
+
+
+def quick_metrics(act, pred): 
+    results = {
+        'Accuracy': accuracy_score(act, pred),
+        'Macro F1 Score': f1_score(act, pred, average='macro'),
+        'Weighted F1 Score': f1_score(act, pred, average='weighted'),
+        'Cohen\'s Kappa': cohen_kappa_score(act, pred)
+    }    
+    return results

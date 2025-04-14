@@ -17,3 +17,9 @@ To create all necessary tables for the project - import the ddl.sql file; this w
 Ubuntu comes with a standard version of Python, it's recommended to update to Python 3.12. Be aware of this or consider changing the alias of the python3 command to the 3.12 version. You don't need to update the Alias if you work with a virtual environment. 
 
 Pip is installed alongside Python 3.12
+
+Instlal the virtual environment from the requirements.txt file, there are a few caveats however: 
+1) ON Linux-AMDGPU systems follow the rocm installation guide at amd.com: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html 
+2) On non-linux / non-amd systems: Good luck - I can imagine you will need to replace `rocm` suffixes and specific packages but I had no platform to test this on. 
+
+In case pip autoloads a module that is not compatible with ROCM (such as: https://pypi.org/project/tf-keras/ which has built in support for transformers and looked cool to use but broke my venv), you can restore the venv by using `pip install tensorflow-rocm==2.17 -f https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3 --upgrade  --force-reinstall `

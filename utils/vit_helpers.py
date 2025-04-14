@@ -8,8 +8,12 @@ from tensorflow.keras import layers, ops
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+import json
 
 
+def get_vit_configurations(file_path):     
+    with open(file_path, 'r', encoding='utf-8') as conf: 
+        return json.load(conf)
 
 
 class ImageDataGeneratorFromDF(Sequence):
@@ -68,7 +72,6 @@ class ImageDataGeneratorFromDF(Sequence):
             
             # Crop the image using the coordinates from the DataFrame
             image = image.crop((top_left_x, top_left_y, bottom_right_x, bottom_right_y))
-        
         # Resize the image to the target size
         image = image.resize(self.target_size)
         
@@ -81,9 +84,10 @@ class ImageDataGeneratorFromDF(Sequence):
 
     # Implement the patch encoding layer
 class PatchEncoder(layers.Layer):
-    def __init__(self, num_patches, projection_dim):
-        super().__init__()
+    def __init__(self, num_patches, projection_dim, **kwargs):
+        super().__init__(**kwargs)
         self.num_patches = num_patches
+        self.projection_dim = projection_dim  
         self.projection = layers.Dense(units=projection_dim)
         self.position_embedding = layers.Embedding(
             input_dim=num_patches, output_dim=projection_dim
@@ -99,15 +103,18 @@ class PatchEncoder(layers.Layer):
 
     def get_config(self):
         config = super().get_config()
-        config.update({"num_patches": self.num_patches})
+        config.update({
+            "num_patches": self.num_patches, 
+            "projection_dim": self.projection_dim
+            })
         return config
     
 
 
 # Implement patch creation as a layer
 class Patches(layers.Layer):
-    def __init__(self, patch_size):
-        super().__init__()
+    def __init__(self, patch_size, **kwargs):
+        super().__init__(**kwargs)
         self.patch_size = patch_size
 
     def call(self, images):
