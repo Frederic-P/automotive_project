@@ -200,7 +200,7 @@
       "SHAPE": 220,
       "PATCH_SIZE": 22,
       "BATCH_SIZE": 128,
-      "LEARNING_RATE": 0.001,
+      "LEARNING_RATE": 0.0005,
       "WEIGHT_DECAY": 0.0001,
       "TRANSFORMER_LAYERS": 8,
       "VECTORSIZE": 128,
@@ -210,6 +210,36 @@
       "MAX_EPOCHS":100,
       "MLP_X": 4096, 
       "MLP_Y": 2048
+    }, 
+    "ViT15": {
+      "SHAPE": 220,
+      "PATCH_SIZE": 22,
+      "BATCH_SIZE": 128,
+      "LEARNING_RATE": 0.0005,
+      "WEIGHT_DECAY": 0.0001,
+      "TRANSFORMER_LAYERS": 8,
+      "VECTORSIZE": 128,
+      "HEADS": 4,
+      "PATCHES": 100, 
+      "TINY":true,
+      "MAX_EPOCHS":100,
+      "MLP_X": 8192, 
+      "MLP_Y": 4096
+    }, 
+    "ViT16": {
+      "SHAPE": 220,
+      "PATCH_SIZE": 22,
+      "BATCH_SIZE": 128,
+      "LEARNING_RATE": 0.0005,
+      "WEIGHT_DECAY": 0.0001,
+      "TRANSFORMER_LAYERS": 8,
+      "VECTORSIZE": 128,
+      "HEADS": 4,
+      "PATCHES": 100, 
+      "TINY":true,
+      "MAX_EPOCHS":100,
+      "MLP_X": 512, 
+      "MLP_Y": 256
     }
 
   }

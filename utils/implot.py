@@ -69,11 +69,34 @@ def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path')
 
 
 
-def make_cm(act, pred, labels): 
+# def make_cm(act, pred, labels): 
+#     cm = confusion_matrix(act, pred)
+#     cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] 
+#     cm_relative = np.round(cm_relative, 3)
+#     # Display confusion matrix using matplotlib
+#     fig, ax = plt.subplots(figsize=(16, 16))
+#     disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
+#     disp.plot(ax=ax, cmap='Blues', colorbar=True)
+#     ax.set_xticks(np.arange(len(labels)))
+#     ax.set_yticks(np.arange(len(labels)))
+#     ax.set_xticklabels(labels)
+#     ax.set_yticklabels(labels)
+#     ax.tick_params(axis='x', rotation=90)
+#     plt.xlabel("Predicted Labels")
+#     plt.ylabel("Actual Labels")
+#     return plt
+
+#TODO check backward compatibility of this thing
+#TODO labels should be added to embedded views too.
+def make_cm(act, pred, labels, embed=False): 
     cm = confusion_matrix(act, pred)
     cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] 
     cm_relative = np.round(cm_relative, 3)
-    # Display confusion matrix using matplotlib
+
+    if embed:
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
+        disp.display_labels = labels   #PATCH for TODO 2 (Test pending)
+        return disp  
     fig, ax = plt.subplots(figsize=(16, 16))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
     disp.plot(ax=ax, cmap='Blues', colorbar=True)
