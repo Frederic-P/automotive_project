@@ -9,6 +9,6 @@ This manual describes the second phase of this project: data harvesting.
 2) Virtual PIP envirment needs to be installed and working (see installation.md)
 
 ## Data harvesting order:
-There are two distinct phases in the data harvesting part. First of all a base collection has to be harvested. A base collection is all listings of a given list of brands available for sale in a given country. Once a basecolection for one country is 'harvested', it can be used to train the car angle detector (separate repository see: TODO)
+Data is collected from Autoscout; this online car trading platform offer access to listings from different countries through a predictable URI; there are no limitations imposed in the robots.txt file and the connection itself is fairly stable. 
 
-For this first phase, set up and run the ```autoscout scraper.ipynb``` notebook. Depending on the bandwidth you should be able to process about 2500 listings per hour.
+The scraper is implemented as a Jupyter Notebook in the root directory of the repository (it is not an ML notebook) ```autoscout scraper.ipynb``` Which can process about 2500 listings per hour.
