@@ -1,10 +1,10 @@
 """
-Utility that handles plotting of images
+Utility that handles plotting of images and basic metrics for plots.
 """
 import matplotlib.pyplot as plt
 from PIL import Image
 import random
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, f1_score, cohen_kappa_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, f1_score, cohen_kappa_score, precision_score, recall_score
 import numpy as np
 
 def plot_images_as_grid(imseries, title, n=4, imtitles=None): 
@@ -88,8 +88,10 @@ def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path')
 
 #TODO check backward compatibility of this thing
 #TODO labels should be added to embedded views too.
-def make_cm(act, pred, labels, embed=False): 
+def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
     cm = confusion_matrix(act, pred)
+    if err_only:
+        cm[np.eye(len(cm), dtype=bool)] = 0
     cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] 
     cm_relative = np.round(cm_relative, 3)
 
@@ -99,7 +101,7 @@ def make_cm(act, pred, labels, embed=False):
         return disp  
     fig, ax = plt.subplots(figsize=(16, 16))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
-    disp.plot(ax=ax, cmap='Blues', colorbar=True)
+    disp.plot(ax=ax, cmap=colormap, colorbar=True)
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
     ax.set_xticklabels(labels)
@@ -113,10 +115,17 @@ def make_cm(act, pred, labels, embed=False):
 
 
 def quick_metrics(act, pred): 
+    #TODO added macro and weighted precision and recall; should be 
+    #added to metrics visualisation notebooks (see where quick_metrics is called
+    #and apply updates there)
     results = {
         'Accuracy': accuracy_score(act, pred),
         'Macro F1 Score': f1_score(act, pred, average='macro'),
         'Weighted F1 Score': f1_score(act, pred, average='weighted'),
-        'Cohen\'s Kappa': cohen_kappa_score(act, pred)
+        'Cohen\'s Kappa': cohen_kappa_score(act, pred),
+        'Macro Precision': precision_score(act, pred, average='macro', zero_division=0),
+        'Macro Recall': recall_score(act, pred, average='macro', zero_division=0),
+        'Weighted Precision': precision_score(act, pred, average='weighted', zero_division=0),
+        'Weighted Recall': recall_score(act, pred, average='weighted', zero_division=0),
     }    
     return results
