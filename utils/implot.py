@@ -6,6 +6,7 @@ from PIL import Image
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, f1_score, cohen_kappa_score, precision_score, recall_score
 import numpy as np
+import seaborn as sns
 
 def plot_images_as_grid(imseries, title, n=4, imtitles=None): 
     """
@@ -86,8 +87,8 @@ def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path')
 #     plt.ylabel("Actual Labels")
 #     return plt
 
-#TODO check backward compatibility of this thing
-#TODO labels should be added to embedded views too.
+#TODO check backward compatibility of this thing (PENDING)
+#TODO labels should be added to embedded views too. (OK)
 def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
     cm = confusion_matrix(act, pred)
     if err_only:
@@ -115,6 +116,18 @@ def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'):
 
 
 def quick_metrics(act, pred): 
+    """
+        Calculates eight standard metrics to use in reporting; 
+        Accurac, macroF1, weighedF1, cohens kappa, macroprecission
+        macrorecall, weighedprecision, weighedrecall
+    
+    ARGUMENTS: 
+        act = list = list of actual
+        pred = list = list of model predictions
+
+    RETURNS: 
+        dictionary with scoring name metrics and scores. 
+    """
     #TODO added macro and weighted precision and recall; should be 
     #added to metrics visualisation notebooks (see where quick_metrics is called
     #and apply updates there)
@@ -129,3 +142,30 @@ def quick_metrics(act, pred):
         'Weighted Recall': recall_score(act, pred, average='weighted', zero_division=0),
     }    
     return results
+
+
+    def cm_delta(cm_one, cm_two, labels): 
+        #TODO test pending implementation!!! 
+        """
+            Plots a meta CM comparing two confusion matrices. It will substrac the score of 
+            your second CM from your first CM and plot the difference on a red-green scale
+            red = CM2 performed worse than CM1 for this cell; green is better. 
+
+        ARGUMENTS: 
+            cm_one = Confusion matrix (as made by make_cm utility)
+            cm_two = Confusion matrix (ibid)
+            labels = list of labels (REQUIRED)
+
+        """
+        diff_matrix = cm_one - cm_two
+        fig, ax = plt.subplots(figsize=(16, 16))
+        sns.heatmap(diff_matrix, annot=True, fmt=".2f", cmap='RdYlGn_r', center=0,
+                    xticklabels=labels, yticklabels=labels, cbar=True, square=True, ax=ax)
+        
+        ax.set_title("Difference Confusion Matrix (CM2 - CM1)", fontsize=16)
+        ax.set_xlabel("Predicted Labels")
+        ax.set_ylabel("Actual Labels")
+        ax.tick_params(axis='x', rotation=90)
+        ax.tick_params(axis='y', rotation=0)
+        
+        return fig

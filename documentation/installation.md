@@ -31,3 +31,82 @@ The code was written for a system using Linux + ROCM6.3 + Radeon RX6700XT this h
 In case pip autoloads a module that is not compatible with ROCM (such as: https://pypi.org/project/tf-keras/ which has built in support for transformers and looked cool to use but broke keras), you can restore the venv by using `pip install tensorflow-rocm==2.17 -f https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3 --upgrade  --force-reinstall ` (apply the correct Major, Minor version code for rocm in the URI parameters.)
 
 On Windows systems you can use the requirements_windows.txt file and install an environment from there. This is the environment dumped from a system that did not have GPU-acceleration.
+
+
+## Project configuration
+Local variables, MYSQL user accounts, passwords etc... are handled by a config file, this config file is excluded from the VSC-tool and as such you'll need to manually configure your system. You can use the provided `sample.conf.ini` file as a guide to set it up; do not change the keynames in the sample file only provide values. The config file with your actual configuration values in should be named `automotive.conf.ini` and should be stored in the `/config` dir starting from the root of this repo. 
+
+Some guidelines to keep in mind when setting up this config file: 
+- strings are unquoted and case sensitive
+- The .ini file is subdivided in sections (marked with []), do not move values from one section to another section
+- Pay close attention to the use of absolute or relative paths. If a path is documented a relative, it should be written down as a subfolder to an absolute path. The documentation below identifies a kv pair as section.key = explain the expected value.
+
+### Configuration settings explained: 
+
+````
+    [remote]
+    host = <ip_of_mysql_server>
+    port = <int: port of mysql server>
+    user = <str: username>
+    pw = <str: password>
+    db = <str: database name>
+
+    [local]
+    host = localhost
+    port = 3306
+    user = root
+    pw = VLmP78dQ1
+    db = automotive
+
+    [settings]
+    connection = <one of the two above keys: remove or local>
+    image_directory = <string starting from root where your images are stored. This folder will contain the augmented data when created and one folder per downloaded brand.>
+    vit_configurations = <Relative path to the vit_configs.json file holding the VIT-profiles to test in notebook 3.5, if you don't make changes you can use `config/vit_configs.json`>
+
+
+    [directories]
+    root_dir = C:\python Projects\automotive_project
+    yolo_path = models/yolo/yolov8n.pt
+    final_models_dirname = final models
+    binary_dir = models/bin_models
+    vit_dir = models/vision_transformer
+    final_angle_dir = angles
+    brandphase = brand
+    angled = angle_based
+
+    [dir_augmentations]
+    subfolder = augmentated data
+    csv_dir = CSV-data
+
+    [flask_angletagger]
+    country_only = B
+    username = frederic
+    password = abc123
+```
+
+- remote.host = IP address that allows you to reach your MYSQL server; your server will need to accept remote connections and have a user account associated to it that can log in remotely (%)
+- remote.port = integer that tells what port to connect to (typically 3306)
+- remote.user = string username for MYSQL (needs CRU rights) remotely: you are NOT encouraged to use the root account here!!!
+- remote.pw = string: Case sensitive password for the user account
+- remote.db = string: Name of the database (if you use the provided .sql dump) it is `automotive`
+- local.host = string or ip used to identify the localhost (127.0.0.1 or localhost) are typically used here
+- local.port = integer that tells what port to connect to (typically 3306)
+- local.user = string username for MYSQL (you can use the root account here)
+- local.pw = string: Case sensitive password for the user account
+- local.db = string: Name of the database (if you use the provided .sql dump) it is `automotive` (is shared with remote!!) 
+- settings.connection = string = Name of the connection configuration to load: either `remote` or `local`
+- settings.image_directory = string starting from the system root (LINUX: starting with `/`; Windows starting with Letter `Z:\`)
+- settings.vit_configurations = relative path starting from the value set for `directories.root_dir` where the VIT-config file is saved. If you are using the config file from the Git repo, you can use `config/vit_configs.json` as a value.
+- directories.root_dir
+- directories.yolo_path
+- directories.final_models_dirname
+- directories.binary_dir
+- directories.vit_dir
+- directories.final_angle_dir
+- directories.brandphase
+- directories.angled
+- dir_augmentations.subfolder
+- dir_augmentations.csv_dir
+- flask_angletagger.country_only
+- flask_angletagger.username
+- flask_angletagger.password
