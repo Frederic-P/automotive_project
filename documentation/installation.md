@@ -97,16 +97,16 @@ Some guidelines to keep in mind when setting up this config file:
 - settings.connection = string = Name of the connection configuration to load: either `remote` or `local`
 - settings.image_directory = string starting from the system root (LINUX: starting with `/`; Windows starting with Letter `Z:\`)
 - settings.vit_configurations = relative path starting from the value set for `directories.root_dir` where the VIT-config file is saved. If you are using the config file from the Git repo, you can use `config/vit_configs.json` as a value.
-- directories.root_dir
-- directories.yolo_path
-- directories.final_models_dirname
-- directories.binary_dir
-- directories.vit_dir
-- directories.final_angle_dir
-- directories.brandphase
-- directories.angled
-- dir_augmentations.subfolder
-- dir_augmentations.csv_dir
-- flask_angletagger.country_only
-- flask_angletagger.username
-- flask_angletagger.password
+- directories.root_dir = string = absolute path to where you have cloned this repository.
+- directories.yolo_path = string = relative path; starting from directories.root_dir where you will download and read the Yolo model from
+- directories.final_models_dirname = relative path starting from directories.root_dir where final models will be stored and read from. 
+- directories.binary_dir = relative path starting from directories.root_dir where binary models are trained for (usability tagging of images)
+- directories.vit_dir = relative path starting from directories.root_dir where VIT-models and checkpoints are kept. 
+- directories.final_angle_dir = relative path starting from directories.root_dir where angle models are kept. 
+- directories.brandphase = unused #TODO and confirm!
+- directories.angled #TODO
+- dir_augmentations.subfolder #TODO
+- dir_augmentations.csv_dir #TODO
+- flask_angletagger.country_only = String = Countrycodeletter: B,D,F,NL are options you can use. The angle tagger will then only show listings from this country. See the FlaskTagging.md file as to why this matters.
+- flask_angletagger.username = string = username to access the Flask taggin application.
+- flask_angletagger.password = string = password to access the Flask tagging application (put in a strong password if you use portforwarding i.e. Telebit), otherwise this does not really matter.

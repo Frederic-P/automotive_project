@@ -23,6 +23,7 @@ from database import Database
 import car_detection as cd
 from file_io import path_handler
 import platform_dependency as plf
+import time
 
 ##Batch processing config: 
 BATCH_SIZE = 250
@@ -31,7 +32,8 @@ detected_os = plf.get_platform()
 if detected_os == 'Linux':
     print('A unix system was detected, please follow these steps to patch a known UNIX bug:')
     print('https://askubuntu.com/questions/1299255/how-can-i-solve-no-module-named-lzma')
-    input('To continue press enter')
+    print('Script will resume automatically')
+    time.sleep(10)
 
 # Load the project configuration: 
 config = Configloader()
@@ -47,7 +49,7 @@ else:
 
 # Load the YOLO model
 yolo_path = os.path.join(config.get('directories','root_dir'), config.get('directories', 'yolo_path'))
-yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
+#TODO #BUG: you need to autodownload YOLO here!!!!
 yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
 if detected_gpu == 'amd': 
     yolomodel = plf.yolo_override(yolomodel)
