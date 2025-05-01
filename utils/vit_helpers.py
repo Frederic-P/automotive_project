@@ -8,12 +8,82 @@ from tensorflow.keras import layers, ops
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
+from tensorflow import keras
 import json
 
 
 def get_vit_configurations(file_path):     
     with open(file_path, 'r', encoding='utf-8') as conf: 
         return json.load(conf)
+    
+
+def evaluate_vit(configs, df, apply_crop = True, batchsize = 256):
+    results = {}
+    actuals = {}
+
+    # Run evaluation loop on all ids in the dict
+    for vit_id, variant in configs.items():
+        patch_size = variant["PATCH_SIZE"]
+        shape = variant["SHAPE"]
+        PATCHES = (shape // patch_size) ** 2
+        mode = variant['TINY'] == 'true'
+        print(f"Evaluating ViT: {vit_id} with PATCH_SIZE={patch_size}, PATCHES={PATCHES}, Tinymode={mode}")
+        #When in testmode, this is the hardcoded list of brands we'll use to srhink the dataset (speed up testing of notebooks.)
+        if mode:
+            brands = ['ford', 'opel', 'bmw', 'renault']
+            validation_df = df[df['brand'].isin(brands)].copy()
+
+        else:
+            validation_df = df.copy()
+
+
+        brands = validation_df.brand.unique()
+        label_encoder = LabelEncoder()
+        label_encoder.fit(brands)
+        validation_df['y_encoded'] = label_encoder.transform(validation_df['brand'])
+        angles = validation_df.model_label.unique.values
+
+        for angle in angles:
+            name = f'{vit_id}-model_cropped={apply_crop}_angle={angle}.keras'
+            model_path = os.path.join(model_read_dir, name)
+            if not os.path.exists(model_path):
+                print(f"Model {name} not found, skipping.")
+                continue
+
+            print(f"Loading model {name}")
+            model = keras.models.load_model(model_path,
+                                            custom_objects={"Patches": Patches,
+                                                            "PatchEncoder": PatchEncoder})
+
+            view_by_angle_test = validation_df.query('model_label==@angle').reset_index()
+            generator = ImageDataGeneratorFromDF(
+                df=view_by_angle_test,
+                image_column='abs_path',
+                label_column='y_encoded',
+                batch_size=batchsize,
+                target_size=(shape, shape),
+                shuffle=False,
+                apply_crop=apply_crop
+            )
+
+            predictions = []
+            #caveat of Keras, it requires all batches to be of equal length; 
+            # this is a way around the issue without the risk of accidentally padding
+            # the final batch with a underrepresented test class. (adding 3 entries of a 
+            # class that only occurs 4 times naturally)
+            for x_batch, _ in generator:
+                if len(x_batch)  == 0:
+                    break
+                batch_preds = model.predict_on_batch(x_batch)
+                predictions.extend(batch_preds)
+            results[vit_id] = predictions
+            actuals[vit_id] = {
+                'data': view_by_angle_test['y_encoded'],
+                'encoder' : label_encoder
+            }
+    return [results, actuals]
 
 
 class ImageDataGeneratorFromDF(Sequence):

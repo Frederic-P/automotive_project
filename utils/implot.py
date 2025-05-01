@@ -7,6 +7,11 @@ import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, f1_score, cohen_kappa_score, precision_score, recall_score
 import numpy as np
 import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from collections import defaultdict
+
 
 def plot_images_as_grid(imseries, title, n=4, imtitles=None): 
     """
@@ -38,35 +43,46 @@ def plot_images_as_grid(imseries, title, n=4, imtitles=None):
     fig.suptitle(title, fontsize=16)
 
 
-def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path'):
+def cm_delta(pred_one, pred_two, acts, labels): 
     """
-        Creates a discordplot with samplesize images. 
-        A discordplot is a plot that visualizes the image instance on the left and the discord among models on the right
+        Plots a meta CM comparing two models. It will substract the score of 
+        the CM of your second model from the CM of your first model and plot the
+        difference on a red-green scale
 
-        Parameters:
-            - data (Pandas Dataframe): pandas dataframe of the entire dataset where you want to visualize the discord of.
-            - samplesize (Int): How many discord samples to show. 
-            - rownames (List): Names of the columns that hold a prediction score)
-            - imagecolumn (string): Name of the column that holds the fully qualified path to the image on the harddrive. 
+        red = CM2 performed worse than CM1 for this cell; green is better. 
+
+    ARGUMENTS: 
+        pred_one = Predictions of the first model
+        pred_two = Prediction of the second model
+        acts = actual values (actuals should be of equal length! as pred_one and pred_two
+        labels = list of labels (REQUIRED)
+
     """
-    data = data.sample(samplesize)
-    fig, axes = plt.subplots(samplesize, 2, figsize=(15, samplesize * 6))
-    for idx, row in data.reset_index().iterrows(): 
-        model_results = []
-        for rowname in rownames: 
-            model_results.append(row[rowname])
-        image_path = row[imagecolumn]
-        image = Image.open(image_path)
-        # image
-        ax_img = axes[idx, 0]
-        ax_img.imshow(image)
-        # bar chart next to image!!
-        ax_bar = axes[idx, 1]
-        ax_bar.bar(rownames, model_results)
-        ax_bar.set_title(f'Model Predictions for Row {idx+1}')
-        ax_bar.set_xlabel('Model')
-        ax_bar.set_ylabel('Prediction Value')
+    assert(len(pred_one)== len(acts))
+    assert(len(pred_two)== len(acts))
+    cm_one = confusion_matrix(acts, pred_one, labels=labels)
+    cm_two = confusion_matrix(acts, pred_two, labels=labels)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cm_one_norm = cm_one.astype('float') / cm_one.sum(axis=1, keepdims=True)
+        cm_two_norm = cm_two.astype('float') / cm_two.sum(axis=1, keepdims=True)
+        cm_one_norm = np.nan_to_num(cm_one_norm, nan=0.0, posinf=0.0, neginf=0.0)
+        cm_two_norm = np.nan_to_num(cm_two_norm, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Difference in percentage points
+        diff_matrix = (cm_one_norm - cm_two_norm) * 100
+    fig, ax = plt.subplots(figsize=(20, 20))
+    sns.heatmap(diff_matrix, annot=True, fmt=".1f", cmap='RdYlGn', center=0,
+                xticklabels=labels, yticklabels=labels, cbar=True, cbar_kws={'shrink': 0.75}, square=True, ax=ax)
+    
+    ax.set_title("Difference Matrix (Model1 - Model2) in %", fontsize=16)
+    fig.text(0.12, 0.05, "Model 1 is better than model2 if the TP-diagonal lights up green\n reds outside the diagonal mean that model1 is making less errors there.", ha='center', fontsize=12)
+    ax.set_xlabel("Predicted Labels")
+    ax.set_ylabel("Actual Labels")
+    ax.tick_params(axis='x', rotation=90)
+    ax.tick_params(axis='y', rotation=0)
     plt.tight_layout()
+    plt.close(fig)
+    return fig
 
 
 
@@ -88,30 +104,39 @@ def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path')
 #     return plt
 
 #TODO check backward compatibility of this thing (PENDING)
-#TODO labels should be added to embedded views too. (OK)
 def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
     cm = confusion_matrix(act, pred)
     if err_only:
         cm[np.eye(len(cm), dtype=bool)] = 0
-    cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] 
+    cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     cm_relative = np.round(cm_relative, 3)
-
     if embed:
         disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
-        disp.display_labels = labels   #PATCH for TODO 2 (Test pending)
-        return disp  
-    fig, ax = plt.subplots(figsize=(16, 16))
+        disp.display_labels = labels
+        return disp
+    fig, ax = plt.subplots(figsize=(20, 20))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
-    disp.plot(ax=ax, cmap=colormap, colorbar=True)
+    disp.plot(ax=ax, cmap=colormap, colorbar=False)
+    im = ax.images[-1]
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, shrink=0.9)
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
-    ax.set_xticklabels(labels)
-    ax.set_yticklabels(labels)
-    ax.tick_params(axis='x', rotation=90)
-    plt.xlabel("Predicted Labels")
-    plt.ylabel("Actual Labels")
+    ax.set_xticklabels(labels, fontsize=14, rotation=90)
+    ax.set_yticklabels(labels, fontsize=14)
+    ax.set_xlabel("Predicted Labels", fontsize=16)
+    ax.set_ylabel("Actual Labels", fontsize=16)
     return plt
 
+def quickplot(df, key):
+    value_counts = df[key].value_counts().reset_index()
+    value_counts.columns = [key, 'count']
+    fig = px.bar(
+        value_counts,
+        x=key,
+        y='count',
+        template="custom"
+    )
+    return fig
 
 
 
@@ -128,9 +153,6 @@ def quick_metrics(act, pred):
     RETURNS: 
         dictionary with scoring name metrics and scores. 
     """
-    #TODO added macro and weighted precision and recall; should be 
-    #added to metrics visualisation notebooks (see where quick_metrics is called
-    #and apply updates there)
     results = {
         'Accuracy': accuracy_score(act, pred),
         'Macro F1 Score': f1_score(act, pred, average='macro'),
@@ -144,28 +166,75 @@ def quick_metrics(act, pred):
     return results
 
 
-    def cm_delta(cm_one, cm_two, labels): 
-        #TODO test pending implementation!!! 
-        """
-            Plots a meta CM comparing two confusion matrices. It will substrac the score of 
-            your second CM from your first CM and plot the difference on a red-green scale
-            red = CM2 performed worse than CM1 for this cell; green is better. 
+def plot_quick_metrics(multidict): 
+    x_labels = list(multidict.keys())
+    metrics_to_plot = list(multidict[x_labels[0]].keys())
 
-        ARGUMENTS: 
-            cm_one = Confusion matrix (as made by make_cm utility)
-            cm_two = Confusion matrix (ibid)
-            labels = list of labels (REQUIRED)
+    fig = make_subplots(rows=2, cols=4, subplot_titles=metrics_to_plot)
 
-        """
-        diff_matrix = cm_one - cm_two
-        fig, ax = plt.subplots(figsize=(16, 16))
-        sns.heatmap(diff_matrix, annot=True, fmt=".2f", cmap='RdYlGn_r', center=0,
-                    xticklabels=labels, yticklabels=labels, cbar=True, square=True, ax=ax)
-        
-        ax.set_title("Difference Confusion Matrix (CM2 - CM1)", fontsize=16)
-        ax.set_xlabel("Predicted Labels")
-        ax.set_ylabel("Actual Labels")
-        ax.tick_params(axis='x', rotation=90)
-        ax.tick_params(axis='y', rotation=0)
-        
-        return fig
+    for i, metric in enumerate(metrics_to_plot):
+        row = i // 4 + 1
+        col = i % 4 + 1
+        values = [multidict[k][metric] for k in x_labels]
+
+        fig.add_trace(
+            go.Bar(
+                x=x_labels,
+                y=values,
+                text=[f'{v:.3f}' for v in values],
+                textposition='inside',
+                textfont=dict(size=18),
+                name=metric
+            ),
+            row=row, col=col
+        )
+    return fig
+
+
+def get_correct_counts(preds, actuals):
+    correct = defaultdict(int)
+    counts = defaultdict(int)
+    for pred, actual in zip(preds, actuals):
+        counts[actual] += 1
+        if pred == actual:
+            correct[actual] += 1
+    return correct, counts
+
+def compare_model_accuracies(model1_preds, model1_actuals, model2_preds, model2_actuals, labels, stringdict):
+    correct1, counts1 = get_correct_counts(model1_preds, model1_actuals)
+    correct2, counts2 = get_correct_counts(model2_preds, model2_actuals)
+    #For adding text to plot!!
+    required_strings = ['title', 'xaxis_title', 'yaxis_title']
+    for s in required_strings:
+        assert s in stringdict.keys()
+    diff_raw = []
+    for label in labels:
+        total1 = counts1[label]
+        total2 = counts2[label]
+        acc1 = correct1[label] / total1 if total1 > 0 else 0
+        acc2 = correct2[label] / total2 if total2 > 0 else 0
+        diff = (acc1 - acc2) * 100  # percent points
+        diff_raw.append((label, diff))
+    diff_sorted = sorted(diff_raw, key=lambda x: x[1], reverse=False)
+    sorted_labels, sorted_diffs = zip(*diff_sorted)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=sorted_labels,
+        x=sorted_diffs,
+        orientation='h',
+        text=[f"{d:+.2f}" for d in sorted_diffs],
+        textposition='outside',
+        marker_color=['green' if d >= 0 else 'red' for d in sorted_diffs]
+    ))
+    fig.update_layout(
+        title=stringdict['title'],
+        xaxis_title=stringdict['xaxis_title'],
+        yaxis_title=stringdict['yaxis_title'],
+        height=1000,
+        width=750, 
+        margin=dict(l=150, r=50, t=50, b=50),  # Adjust margins for padding
+
+        yaxis=dict(ticklen=1535),  # Adjust ticklen to increase the space between bars and labels,
+        template='custom'
+    )
+    return fig

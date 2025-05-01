@@ -25,7 +25,6 @@ def get_platform():
 def get_gpu_info():
     """
         Try to detect the GPU platform used in the computer 
-        #TODO: confirm working code on a Windows system. 
     """
     system = get_platform()
     if system == 'Linux': 

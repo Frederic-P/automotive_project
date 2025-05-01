@@ -142,6 +142,13 @@ def get_folder_content(dir):
 
 def table_to_csv(table, dir, name, with_index=False): 
     """
-    
+        dumps a pandas dataframe to a file with the optional index
+    ARGUMENTS
+        table = df =  pandas df 
+        dir = str =directory where the CSV file should be dumped
+        name = str = name of the file ending in a valid file format.
+    RETURNS:
+        NONE
     """
+    os.makedirs(dir, exist_ok=True)
     table.to_csv(os.path.join(dir, name), index = with_index)

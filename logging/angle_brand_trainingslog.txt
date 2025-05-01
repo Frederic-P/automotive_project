@@ -1,0 +1,4 @@
+22-04-2025 12:27:16 - Started training model: FULL_brand_model-Resnet50_cropped=True_angle=front_balanced_test=True.keras
+22-04-2025 12:30:36 - Started training model: FULL_brand_model-Resnet50_cropped=True_angle=front_balancedtest=True.keras
+22-04-2025 22:59:44 - Started training model: FULL_brand_model-Resnet50_cropped=True_angle=front_balancedtest=True.keras
+23-04-2025 19:48:20 - Finished raining model: FULL_brand_model-Resnet50_cropped=True_angle=front_balancedtest=True.keras

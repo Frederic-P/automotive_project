@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import random 
 import shutil
+from tqdm import tqdm
 import json
 from sklearn.model_selection import train_test_split
 import uuid
@@ -255,6 +256,41 @@ def ordinal_encoder_to_dict(oe):
     return d
 
 
+def infer_cnn(model_folder, dataset, crop, shape, pbs=1024): 
+    """
+        base function to test the full collection of final CNN based models.
+        pbs = predict batch size (how big each batch is with the exception of the final batch. )
+    """
+    dircontent = os.listdir(model_folder)
+    labeldict = [f for f in dircontent if f.endswith('.json')][0]
+    # subslice_validation = validation_df.query(f'model_label == "{angle_folder}"')
+    with open(os.path.join(model_folder,labeldict), 'r') as f:
+        le = json.load(f)
+        le = {int(k): v for k,v in le.items()}
+    predicts = []
+    actuals = []
+    model = load_one_model(model_folder)
+    l = len(dataset)
+    for i in tqdm(range(0, l, pbs), leave=False):
+        batch_df = dataset.iloc[i:i + pbs]
+        X_val_images = []
+        y_targets = []
+
+        # Preprocess images in the current batch
+        for _, row in batch_df.iterrows():
+            coords = [row['yolobox_top_left_x'], row['yolobox_top_left_y'], row['yolobox_bottom_right_x'], row['yolobox_bottom_right_y']]
+            image = preprocess_image(row['abs_path'], crop, coords, shape)
+            X_val_images.append(image)
+            y_targets.append(row['brand'])
+
+        X_val_images = np.array(X_val_images)
+
+        # Predict for the current batch
+        batch_predicts = model.predict(X_val_images, verbose=0)
+        predicts.extend(batch_predicts)
+        actuals.extend(y_targets)
+    return predicts, actuals, le
+
 def load_one_model(dir, extension = '.keras'):
     """
     Loads a model with a specific extension for a directory. This method is only 
@@ -389,10 +425,6 @@ def reducer(df, max_samples, by):
 
 def save_optimizer_state(model, storagefolder, epoch, frozenstate):
     """Save optimizer state (learning rate) to a file.
-    
-
-        //BUG: modelcheckpoint generates name of dump. need it here to link the json dump
-        with the right model.  //PATCHED - pending test
     """
     print(f'received epcoh {epoch} and state {frozenstate}')
 
@@ -431,8 +463,41 @@ def load_optimizer_state(storagefolder):
         return False
 
 
+def resample_classes_to_mean(X_test, y_test):
+    """
+    PARAMETERS:
+        X_test (pd.DataFrame): The test set features.
+        y_test (pd.series): The test set labels.
+    RETURNS:
+        X_test (pd.DataFrame): The balanced test set features.
+        y_test (pd.Series): The balanced test set labels.
+    
+    Takes an X_test and y_test and resamples the test set to the mean of the class counts based on y_test
+    it then returns the X_test and y_test as two separate dataframes again. This function can be used as a 
+    dropin where needed as the returned objects are structurually the same as the input objects but they 
+    are balanced out based on the target class you want to predict.
+    """
+    X_test_with_labels = X_test.copy()
+    X_test_with_labels['target'] = y_test
+    mean_count = int(X_test_with_labels['target'].value_counts().mean())
+    X_test_balanced = (
+        X_test_with_labels
+        .groupby('target', group_keys=False)
+        .apply(lambda x: x.sample(n=mean_count, replace=len(x) < mean_count, random_state=42))
+        .reset_index(drop=True)
+    )
+    return get_X_y(X_test_balanced, 'target')
 
-def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs, learning_rate = 0.001):
+
+def resnet_learner(X_train, X_test, y_train, y_test, shape, apply_crop, storagefolder, batchsize, max_epochs, learning_rate = 0.001, resample_test_to_mean = False):
+    # resample_test_to_mean (bool): If True, the test xet will be resampled so each class has the same number of samples.(mean of the class)
+
+    if resample_test_to_mean:
+        #resample the test set to the mean of the class counts
+        print('Resampling test set to mean of the classes')
+        X_test, y_test = resample_classes_to_mean(X_test, y_test)
+    else:
+        print('Training RESNET on unballanced test set! BEWARE!')
     #0.001 learning rate is standard for adam(w) #SRC: https://keras.io/api/optimizers/adamw/
     train_gen = image_generator(
         batch_size=batchsize, 

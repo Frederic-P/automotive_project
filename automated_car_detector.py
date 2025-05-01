@@ -47,9 +47,8 @@ else:
     if detected_gpu != 'amd': 
         print(f"{detected_gpu} GPU's were not tested - code required workarounds to get working on AMD - no guarantees given.")
 
-# Load the YOLO model
+# Load the YOLO model ==> if no model is found, YOLO() class handles it automatically by downloading it( active internet connection required.)
 yolo_path = os.path.join(config.get('directories','root_dir'), config.get('directories', 'yolo_path'))
-#TODO #BUG: you need to autodownload YOLO here!!!!
 yolomodel = YOLO(yolo_path)  # YOLOv8 nano for speed, or 'yolov8s.pt' for more accuracy
 if detected_gpu == 'amd': 
     yolomodel = plf.yolo_override(yolomodel)

@@ -404,7 +404,21 @@
       "MAX_EPOCHS":4,
       "MLP_X": 2048, 
       "MLP_Y": 1024
+    }, 
+    "ViT1_FULL":{
+      "SHAPE": 220,
+      "PATCH_SIZE": 22,
+      "BATCH_SIZE": 32,
+      "LEARNING_RATE": 0.0005,
+      "WEIGHT_DECAY": 0.0001,
+      "TRANSFORMER_LAYERS": 8,
+      "VECTORSIZE": 64,
+      "HEADS": 4,
+      "PATCHES": 100, 
+      "TINY":false,
+      "MAX_EPOCHS":100,
+      "MLP_X": 2048, 
+      "MLP_Y": 1024
     }
-
   }
   
