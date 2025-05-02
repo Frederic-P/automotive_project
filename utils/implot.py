@@ -11,6 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from collections import defaultdict
+import math
 
 
 def plot_images_as_grid(imseries, title, n=4, imtitles=None): 
@@ -83,25 +84,6 @@ def cm_delta(pred_one, pred_two, acts, labels):
     plt.tight_layout()
     plt.close(fig)
     return fig
-
-
-
-# def make_cm(act, pred, labels): 
-#     cm = confusion_matrix(act, pred)
-#     cm_relative = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] 
-#     cm_relative = np.round(cm_relative, 3)
-#     # Display confusion matrix using matplotlib
-#     fig, ax = plt.subplots(figsize=(16, 16))
-#     disp = ConfusionMatrixDisplay(confusion_matrix=cm_relative)
-#     disp.plot(ax=ax, cmap='Blues', colorbar=True)
-#     ax.set_xticks(np.arange(len(labels)))
-#     ax.set_yticks(np.arange(len(labels)))
-#     ax.set_xticklabels(labels)
-#     ax.set_yticklabels(labels)
-#     ax.tick_params(axis='x', rotation=90)
-#     plt.xlabel("Predicted Labels")
-#     plt.ylabel("Actual Labels")
-#     return plt
 
 #TODO check backward compatibility of this thing (PENDING)
 def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
@@ -237,4 +219,187 @@ def compare_model_accuracies(model1_preds, model1_actuals, model2_preds, model2_
         yaxis=dict(ticklen=1535),  # Adjust ticklen to increase the space between bars and labels,
         template='custom'
     )
+    return fig
+
+
+def side_by_side_cm(cm1, cm1title, cm2, cm2title):
+    fig, axes = plt.subplots(1, 2, figsize=(20, 10))
+    axes = axes.flatten()
+    for ax, cm_display, title in zip(
+        axes,
+        [cm1, cm2],
+        [cm1title, cm2title]
+    ):
+        cm_display.plot(ax=ax, cmap='Blues', colorbar=True)
+        ax.set_title(title, fontsize=18)
+        ax.set_xlabel("Predicted Labels", fontsize=14)
+        ax.set_ylabel("Actual Labels", fontsize=14)
+        ax.tick_params(axis='x', labelrotation=90)
+        ax.xaxis.label.set_size(16)
+        ax.yaxis.label.set_size(16)
+        for text in ax.texts:
+            text.set_fontsize(6)
+        ax.set_xticklabels(cm_display.display_labels, fontsize=12)
+        ax.set_yticklabels(cm_display.display_labels, fontsize=12)
+
+    plt.tight_layout()
+
+
+def brand_accuracy_plot(actuals, predicts):
+    class_correct = defaultdict(int)
+    class_total = defaultdict(int)
+
+    for true, pred in zip(actuals, predicts):
+        class_total[true] += 1
+        if true == pred:
+            class_correct[true] += 1
+
+    # Compute accuracy and sort by accuracy ascending
+    class_accuracy = [
+        (c, class_correct[c] / class_total[c]) for c in class_total.keys()
+    ]
+    class_accuracy.sort(key=lambda x: x[1])  # Sort by accuracy
+
+    sorted_classes, sorted_accuracies = zip(*class_accuracy)
+
+    fig = go.Figure(data=[
+        go.Bar(
+            x=sorted_classes,
+            y=sorted_accuracies,
+            text=[f"{a*100:.1f}%" for a in sorted_accuracies],  # Format as percent
+            textposition='inside',
+            textfont=dict(color='white', size=12)
+        )
+    ])
+
+    fig.update_layout(
+        xaxis_title="Brand",
+        yaxis_title="Accuracy",
+        yaxis=dict(range=[0, 1]),
+        xaxis_tickangle=-45,
+        template='custom',
+        height=500
+    )
+
+    return fig
+
+
+def brand_missclassification_plot(actuals, predicts):
+    misclass_counts = defaultdict(int)
+
+    for true, pred in zip(actuals, predicts):
+        if true != pred:
+            misclass_counts[pred] += 1  # Count incorrect predictions toward the predicted class
+
+    # Sort by frequency descending
+    sorted_items = sorted(misclass_counts.items(), key=lambda x: x[1], reverse=True)
+    if not sorted_items:
+        print("No misclassifications found.")
+        return
+
+    classes, counts = zip(*sorted_items)
+
+    fig = go.Figure(data=[
+        go.Bar(
+            x=classes,
+            y=counts,
+            marker_color='red',
+            text=counts,
+            textfont=dict(color='black', size=16)
+        )
+    ])
+
+    fig.update_layout(
+        xaxis_title="Wrong label predicted",
+        yaxis_title="Amount of misspredictions",
+        template='custom',
+        height=500
+    )
+
+    return fig
+
+
+def plot_boxplots_with_titles(data_dict, title):
+    fig = go.Figure()
+    for idx, (key, entry) in enumerate(data_dict.items()):
+        fig.add_trace(go.Box(
+            y=entry['values'],
+            name=key,
+            boxpoints='outliers',
+            line=dict(width=1.5)
+        ))
+
+    fig.update_layout(
+        title = title, 
+        yaxis_title="Score",
+        xaxis_title="Key",
+        yaxis=dict(range=[0, 1]),
+        template="custom",
+        height=500
+    )
+
+    fig.show()
+
+
+def plot_histograms_subplots(data_dict, num_bins=100, rows=None, cols=None, clean=False):
+    num_items = len(data_dict)
+    bin_size = 1.0 / num_bins
+
+    # Auto-calculate grid shape if not provided
+    if rows is None or cols is None:
+        cols = math.ceil(math.sqrt(num_items))
+        rows = math.ceil(num_items / cols)
+
+    h_spacing = 0.03 if clean else 0.6
+    v_spacing = 0.07 if clean else 0.15
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        shared_xaxes=False,
+        shared_yaxes=False,
+        horizontal_spacing=h_spacing,
+        vertical_spacing=v_spacing,
+        subplot_titles=[
+            f"{key}: {entry['title']}" for key, entry in data_dict.items()
+        ]
+    )
+
+    for i, (key, entry) in enumerate(data_dict.items()):
+        row = (i // cols) + 1
+        col = (i % cols) + 1
+
+        fig.add_trace(
+            go.Histogram(
+                x=entry['values'],
+                xbins=dict(start=0, end=1, size=bin_size),
+                name=key,
+                showlegend=False,
+                marker=dict(color='skyblue', line=dict(width=1))
+            ),
+            row=row,
+            col=col
+        )
+
+    fig.update_layout(
+        title="Histograms of Certainties",
+        height=250 * rows,
+        template="custom"
+    )
+
+    # Set x/y axis labels (or hide if clean=True)
+    for r in range(1, rows + 1):
+        for c in range(1, cols + 1):
+            fig.update_xaxes(
+                title_text=None if clean else "Score",
+                range=[0, 1],
+                row=r, col=c,
+                showticklabels=not clean
+            )
+            fig.update_yaxes(
+                title_text=None if clean else "Count",
+                row=r, col=c,
+                showticklabels=not clean
+            )
+
     return fig

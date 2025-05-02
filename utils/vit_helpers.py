@@ -6,6 +6,7 @@ on the KERAS tutorial for Vision Transformers.
 from tensorflow.keras.utils import Sequence
 from tensorflow.keras import layers, ops
 import numpy as np
+import os
 from PIL import Image
 import tensorflow as tf
 from sklearn.preprocessing import LabelEncoder
@@ -19,7 +20,7 @@ def get_vit_configurations(file_path):
         return json.load(conf)
     
 
-def evaluate_vit(configs, df, apply_crop = True, batchsize = 256):
+def evaluate_vit(configs, df, dir, apply_crop = True, batchsize = 256 ):
     results = {}
     actuals = {}
 
@@ -43,11 +44,11 @@ def evaluate_vit(configs, df, apply_crop = True, batchsize = 256):
         label_encoder = LabelEncoder()
         label_encoder.fit(brands)
         validation_df['y_encoded'] = label_encoder.transform(validation_df['brand'])
-        angles = validation_df.model_label.unique.values
+        angles = list(validation_df.model_label.unique())
 
         for angle in angles:
             name = f'{vit_id}-model_cropped={apply_crop}_angle={angle}.keras'
-            model_path = os.path.join(model_read_dir, name)
+            model_path = os.path.join(dir, name)
             if not os.path.exists(model_path):
                 print(f"Model {name} not found, skipping.")
                 continue
@@ -162,6 +163,9 @@ class PatchEncoder(layers.Layer):
         self.position_embedding = layers.Embedding(
             input_dim=num_patches, output_dim=projection_dim
         )
+    def build(self): 
+        #warning supression. Not needed
+        pass
 
     def call(self, patch):
         positions = ops.expand_dims(
