@@ -29,7 +29,7 @@ def evaluate_vit(configs, df, dir, apply_crop = True, batchsize = 256 ):
         patch_size = variant["PATCH_SIZE"]
         shape = variant["SHAPE"]
         PATCHES = (shape // patch_size) ** 2
-        mode = variant['TINY'] == 'true'
+        mode = variant['TINY'] == True
         print(f"Evaluating ViT: {vit_id} with PATCH_SIZE={patch_size}, PATCHES={PATCHES}, Tinymode={mode}")
         #When in testmode, this is the hardcoded list of brands we'll use to srhink the dataset (speed up testing of notebooks.)
         if mode:
