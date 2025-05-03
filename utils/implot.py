@@ -19,6 +19,8 @@ def plot_images_as_grid(imseries, title, n=4, imtitles=None):
     creates a grid of n*n images by randomply picking n**2 images
     from a series object (imseries) and plots them into the notebook. 
 
+    if there's more axes than images, these will be rendered as white space. 
+
     Parameters: 
         - imseries (Pandas Series): this should be the fully qualified path to the images on the hard drive.
         - title (string): How to title the plot
@@ -27,6 +29,8 @@ def plot_images_as_grid(imseries, title, n=4, imtitles=None):
 
     """
     samplesize = n**2
+    if samplesize > len(imseries):
+        samplesize = len(imseries)
     sampled_indexes = random.sample(range(len(imseries)), samplesize)
     chosen = imseries.iloc[sampled_indexes].reset_index(drop=True)
     if imtitles is not None:
@@ -35,6 +39,9 @@ def plot_images_as_grid(imseries, title, n=4, imtitles=None):
     axes = axes.flatten()
     i = 0
     for i, ax in enumerate(axes.flat):
+        if i >= len(imseries):
+            ax.axis('off')
+            continue
         image = chosen[i]
         img = Image.open(image)
         ax.imshow(img)

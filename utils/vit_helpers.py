@@ -163,9 +163,6 @@ class PatchEncoder(layers.Layer):
         self.position_embedding = layers.Embedding(
             input_dim=num_patches, output_dim=projection_dim
         )
-    def build(self): 
-        #warning supression. Not needed
-        pass
 
     def call(self, patch):
         positions = ops.expand_dims(
