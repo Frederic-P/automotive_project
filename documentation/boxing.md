@@ -14,4 +14,4 @@ If you want to visually see what and how the bounding boxes are applied, you can
 BBOX data is stored in the MYSQL-server and is being used in various phases of the end-to-end project (binary classifier, angle classifier, brand classifier). The returned coordinates by YOLO are alwyas the TOPLEFT and BOTTOMRIGHT; a certainty score is stored too. 
 
 ## Concurrent phases: 
-You are allowed to use the next phase (FLASK-tagging) while the bounding boxes are being calculated. 
+You are allowed to calculate bounding boxes while data is being collected by the previous phase.

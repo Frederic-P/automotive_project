@@ -161,11 +161,15 @@ def angle():
 def undo():
     if 'logged_in' not in session:
         return redirect(url_for('index'))
-
-    delete_last = """DELETE FROM angletags WHERE pk = (SELECT pk FROM (SELECT MAX(pk) as pk FROM angletags) AS temp);"""
     try:
         db.start_transaction()
-        db.execute_query(delete_last)
+        get_last = 'SELECT MAX(pk) as pk FROM angletags'
+        r = db.execute_query(get_last)
+        # print(r)
+        # print(r[0].keys())
+        last = r[0]['pk']
+        delete_last = "DELETE FROM angletags WHERE pk = %s;"
+        db.execute_query(delete_last, [last])
         db.commit_transaction()
     except Exception as e:
         db.rollback_transaction()

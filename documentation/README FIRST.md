@@ -16,7 +16,9 @@ The order to read the instructions is; the read order of the instructions is cri
 - Describes how the tagging system works and how to use it.
 5) Binary training.md
 - Describes how the binary classification model is trained and how to use it.
+- Describes how to use the binary models to determine the usability of each image in your downloaded set.
 6) Angle training.md
 - Describes how the angle classification model is trained and how to use it.
+- Describes how to use the angle classifier to determin the angle of each image in your downloaded set; 
 7) Brand training.md
 - Describes how the brand classification model is trained and how to use it.

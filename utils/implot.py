@@ -92,7 +92,6 @@ def cm_delta(pred_one, pred_two, acts, labels):
     plt.close(fig)
     return fig
 
-#TODO check backward compatibility of this thing (PENDING)
 def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
     cm = confusion_matrix(act, pred)
     if err_only:
@@ -223,13 +222,13 @@ def compare_model_accuracies(model1_preds, model1_actuals, model2_preds, model2_
         width=750, 
         margin=dict(l=150, r=50, t=50, b=50),  # Adjust margins for padding
 
-        yaxis=dict(ticklen=1535),  # Adjust ticklen to increase the space between bars and labels,
+        yaxis=dict(ticklen=1535),
         template='custom'
     )
     return fig
 
 
-def side_by_side_cm(cm1, cm1title, cm2, cm2title):
+def side_by_side_cm(cm1, cm1title, cm2, cm2title, innersize = 6, labelsize = 12):
     fig, axes = plt.subplots(1, 2, figsize=(20, 10))
     axes = axes.flatten()
     for ax, cm_display, title in zip(
@@ -239,15 +238,15 @@ def side_by_side_cm(cm1, cm1title, cm2, cm2title):
     ):
         cm_display.plot(ax=ax, cmap='Blues', colorbar=True)
         ax.set_title(title, fontsize=18)
-        ax.set_xlabel("Predicted Labels", fontsize=14)
-        ax.set_ylabel("Actual Labels", fontsize=14)
+        ax.set_xlabel("Predicted Labels", fontsize=labelsize+2)
+        ax.set_ylabel("Actual Labels", fontsize=labelsize+2)
         ax.tick_params(axis='x', labelrotation=90)
-        ax.xaxis.label.set_size(16)
-        ax.yaxis.label.set_size(16)
+        ax.xaxis.label.set_size(labelsize+2)
+        ax.yaxis.label.set_size(labelsize+2)
         for text in ax.texts:
-            text.set_fontsize(6)
-        ax.set_xticklabels(cm_display.display_labels, fontsize=12)
-        ax.set_yticklabels(cm_display.display_labels, fontsize=12)
+            text.set_fontsize(innersize)
+        ax.set_xticklabels(cm_display.display_labels, fontsize=labelsize)
+        ax.set_yticklabels(cm_display.display_labels, fontsize=labelsize)
 
     plt.tight_layout()
 

@@ -187,16 +187,18 @@ def augm_mirror_image(source, targetpath, name, given):
     cv2.imwrite(os.path.join(targetpath, name), mirrored_img)
     return new_label
 
-# def load_data(df, use_bounding_boxes=False):
-#     images = []
-#     for _, row in tqdm(df.iterrows()):
-#         bbox = (row['yolobox_top_left_x'], row['yolobox_top_left_y'], row['yolobox_bottom_right_x'], row['yolobox_bottom_right_y'])
-#         img = preprocess_image(row['abs_image_path'], use_bounding_boxes, bbox)
-#         images.append(img)
-#     return np.array(images)
-
-
 def cast_bbox_values(df, bboxcolumns= ['yolobox_top_left_x', 'yolobox_top_left_y', 'yolobox_bottom_right_x', 'yolobox_bottom_right_y']):
+    """
+    Takes a pndas dataframe and makes it compatible with cropping logic in this project: 
+    - Replaces NANs by -1 ==> i.e do not apply cropping. 
+    - all non -1 values will be cast to integers. 
+
+    arguments=
+    df: Pandas Dataframe
+    bboxcolumns: list: list of column names that hold the cooridnates of bounding boxes. 
+
+    returns pandas dataframe 
+    """
     df = df.copy()
     df = df.fillna('-1')  #to suppres a futurewarning in pandas.
     df[bboxcolumns] = df[bboxcolumns].astype(int)

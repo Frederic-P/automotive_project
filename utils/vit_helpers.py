@@ -86,6 +86,126 @@ def evaluate_vit(configs, df, dir, apply_crop = True, batchsize = 256 ):
             }
     return [results, actuals]
 
+def mlp(x, hidden_units, dropout_rate):
+    for units in hidden_units:
+        x = layers.Dense(units, activation=keras.activations.gelu)(x)
+        x = layers.Dropout(dropout_rate)(x)
+    return x
+
+
+def create_vit_classifier(input_shape, patchsize, imshape, output_classes, heads, vectorsize, transformer_layers, transfo_units, mlphead_units ):
+    inputs = keras.Input(shape=input_shape)
+    # Create patches.
+    patches = Patches(patchsize)(inputs)
+    # Encode patches.
+    encoded_patches = PatchEncoder((imshape // patchsize) ** 2, vectorsize)(patches)
+
+    # Create multiple layers of the Transformer block.
+    for _ in range(transformer_layers):
+        # Layer normalization 1.
+        x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+        # Create a multi-head attention layer.
+        attention_output = layers.MultiHeadAttention(
+            num_heads=heads, key_dim=vectorsize, dropout=0.1
+        )(x1, x1)
+        # Skip connection 1.
+        x2 = layers.Add()([attention_output, encoded_patches])
+        # Layer normalization 2.
+        x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
+        # MLP.
+        x3 = mlp(x3, hidden_units=transfo_units, dropout_rate=0.1)
+        # Skip connection 2.
+        encoded_patches = layers.Add()([x3, x2])
+
+    # Create a [batch_size, VECTORSIZE] tensor.
+    representation = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+    representation = layers.Flatten()(representation)
+    representation = layers.Dropout(0.5)(representation)
+    # Add MLP.
+    features = mlp(representation, hidden_units=mlphead_units, dropout_rate=0.5)
+    # Classify outputs.
+    logits = layers.Dense(output_classes)(features)
+    # Create the Keras model.
+    model = keras.Model(inputs=inputs, outputs=logits)
+    return model
+
+
+
+def run_experiment_with_generators(model, filename, dir, lr, wd, traingen, valgen, maxepochs):
+
+        # Path to the checkpoint
+    checkpoint_dest_dir = os.path.join(dir, 'checkpoints')
+    os.makedirs(checkpoint_dest_dir, exist_ok=True)
+    checkpoint_name = filename.replace('.keras', '.weights.h5')  # otherwise you get an error
+    checkpoint_filepath = os.path.join(checkpoint_dest_dir, checkpoint_name)
+
+    # Resume from checkpoint if it exists
+    if os.path.exists(checkpoint_filepath):
+        print(f"Resuming training from checkpoint: {checkpoint_filepath}")
+        model.load_weights(checkpoint_filepath)
+    else:
+        print("No checkpoint found. Starting training from scratch.")
+
+    optimizer = keras.optimizers.AdamW(
+        learning_rate=lr, weight_decay=wd
+    )
+
+    model.compile(
+        optimizer=optimizer,
+        loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=[
+            keras.metrics.SparseCategoricalAccuracy(name="accuracy"),
+            keras.metrics.SparseTopKCategoricalAccuracy(5, name="top-5-accuracy"),
+        ],
+    )
+
+
+    checkpoint_callback = keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        monitor="val_accuracy",
+        save_best_only=True,
+        save_weights_only=True,
+        verbose=1,
+    )
+
+    # ReduceLROnPlateau callback: same as for CNN learners. 
+    reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(
+        monitor="val_accuracy",
+        factor=0.5,
+        patience=3,
+        min_lr=1e-6,
+        verbose=1
+    )
+
+    # EarlyStopping callback
+    early_stopping_callback = keras.callbacks.EarlyStopping(
+        monitor="val_accuracy",
+        patience=6,
+        restore_best_weights=True,
+        verbose=1
+    )
+
+    # Fit the model using generators
+    history = model.fit(
+        traingen,
+        epochs=maxepochs,
+        validation_data=valgen,
+        callbacks=[checkpoint_callback, reduce_lr_callback, early_stopping_callback],
+    )
+
+    # Load the best model weights
+    model.load_weights(checkpoint_filepath)
+
+    # Final evaluation
+    _, accuracy, top_5_accuracy = model.evaluate(valgen)
+    print(f"Test accuracy: {round(accuracy * 100, 2)}%")
+    print(f"Test top 5 accuracy: {round(top_5_accuracy * 100, 2)}%")
+    
+    #save the model:
+    model.save(os.path.join(dir,filename))
+    return history
+
+
 
 class ImageDataGeneratorFromDF(Sequence):
     def __init__(self, df, image_column, label_column, batch_size, target_size=(224, 224), shuffle=True, apply_crop=False):
@@ -217,3 +337,4 @@ class Patches(layers.Layer):
         config = super().get_config()
         config.update({"patch_size": self.patch_size})
         return config
+        
