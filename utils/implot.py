@@ -92,6 +92,36 @@ def cm_delta(pred_one, pred_two, acts, labels):
     plt.close(fig)
     return fig
 
+def plot_discord(data, samplesize=10, rownames = [], imagecolumn = 'image_path'):
+     """
+         Creates a discordplot with samplesize images. 
+         A discordplot is a plot that visualizes the image instance on the left and the discord among models on the right
+ 
+         Parameters:
+             - data (Pandas Dataframe): pandas dataframe of the entire dataset where you want to visualize the discord of.
+             - samplesize (Int): How many discord samples to show. 
+             - rownames (List): Names of the columns that hold a prediction score)
+             - imagecolumn (string): Name of the column that holds the fully qualified path to the image on the harddrive. 
+     """
+     data = data.sample(samplesize)
+     fig, axes = plt.subplots(samplesize, 2, figsize=(15, samplesize * 6))
+     for idx, row in data.reset_index().iterrows(): 
+         model_results = []
+         for rowname in rownames: 
+             model_results.append(row[rowname])
+         image_path = row[imagecolumn]
+         image = Image.open(image_path)
+         # image
+         ax_img = axes[idx, 0]
+         ax_img.imshow(image)
+         # bar chart next to image!!
+         ax_bar = axes[idx, 1]
+         ax_bar.bar(rownames, model_results)
+         ax_bar.set_title(f'Model Predictions for Row {idx+1}')
+         ax_bar.set_xlabel('Model')
+         ax_bar.set_ylabel('Prediction Value')
+     plt.tight_layout()
+
 def make_cm(act, pred, labels, embed=False, err_only=False, colormap='Blues'): 
     cm = confusion_matrix(act, pred)
     if err_only:
