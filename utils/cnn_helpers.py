@@ -258,17 +258,21 @@ def ordinal_encoder_to_dict(oe):
     return d
 
 
-def infer_cnn(model_folder, dataset, crop, shape, pbs=1024): 
+def infer_cnn(model_folder, dataset, crop, shape, pbs=1024, return_labels=True, target = 'brand'): 
     """
         base function to test the full collection of final CNN based models.
         pbs = predict batch size (how big each batch is with the exception of the final batch. )
+        This expects that model_folder has onely ONE .keras and ONE .json file in them.
     """
     dircontent = os.listdir(model_folder)
-    labeldict = [f for f in dircontent if f.endswith('.json')][0]
-    # subslice_validation = validation_df.query(f'model_label == "{angle_folder}"')
-    with open(os.path.join(model_folder,labeldict), 'r') as f:
-        le = json.load(f)
-        le = {int(k): v for k,v in le.items()}
+    if return_labels: 
+        labeldict = [f for f in dircontent if f.endswith('.json')][0]
+        # subslice_validation = validation_df.query(f'model_label == "{angle_folder}"')
+        with open(os.path.join(model_folder,labeldict), 'r') as f:
+            le = json.load(f)
+            le = {int(k): v for k,v in le.items()}
+    else: 
+        le = None
     predicts = []
     actuals = []
     model = load_one_model(model_folder)
@@ -283,7 +287,7 @@ def infer_cnn(model_folder, dataset, crop, shape, pbs=1024):
             coords = [row['yolobox_top_left_x'], row['yolobox_top_left_y'], row['yolobox_bottom_right_x'], row['yolobox_bottom_right_y']]
             image = preprocess_image(row['abs_path'], crop, coords, shape)
             X_val_images.append(image)
-            y_targets.append(row['brand'])
+            y_targets.append(row[target])
 
         X_val_images = np.array(X_val_images)
 
