@@ -22,3 +22,5 @@ The order to read the instructions is; the read order of the instructions is cri
 - Describes how to use the angle classifier to determin the angle of each image in your downloaded set; 
 7) Brand training.md
 - Describes how the brand classification model is trained and how to use it; describes the usage of all 3.x notebooks.
+8) Predicting.md
+- The brand training notebook shows that a non-angle specific trained approach using CNNs works the best. This model is implemented in a demoable prediction notebook that downloads a bunch of files locally, infers them, and displays each image with brand label prediction and certainty.

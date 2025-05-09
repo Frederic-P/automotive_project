@@ -24,13 +24,13 @@ Make sure the correct GPU drivers are installed on the system. For AMD the defau
 
 ## Requirements.txt
 The code was written for a system using Linux + ROCM6.3 + Radeon RX6700XT this has some consequences for the requirements.txt file. As PIP does not provide the ROCM packages listed in the requirements.txt file, these have to be downloaded and installed manually according to the official guide by AMD: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/ The bare-metal installation is recommended over Docker. 
-1) ON Linux-AMDGPU systems follow the rocm installation guide at amd.com: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html
+1) ON Linux-AMDGPU systems follow the rocm installation guide at amd.com: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/tensorflow-install.html You need to complete this guide before running the provided installer.py file. 
 
-2) On non-linux / non-amd systems: Good luck - I can imagine you will need to replace `rocm` suffixes and specific packages but I had no platform to test this on. 
+2) On non-linux / non-amd systems: Good luck - I can imagine you will need to replace `rocm` suffixes and specific packages but I had no platform to test this on. You can use the installer.py file directly and manually look for the modules that could not be installed due to platform conflicts. The names and versions of these modules are reported at the end fo the install process and it's up to you to figure out the equivalent. Please refer to the documentation of Pytorch (https://pytorch.org/get-started/locally/) and Tensorflow (https://www.tensorflow.org/install/pip) for the right install instructions. 
 
-In case pip autoloads a module that is not compatible with ROCM (such as: https://pypi.org/project/tf-keras/ which has built in support for transformers and looked cool to use but broke keras), you can restore the venv by using `pip install tensorflow-rocm==2.17 -f https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3 --upgrade  --force-reinstall ` (apply the correct Major, Minor version code for rocm in the URI parameters.)
+To install all required modules in your environment a script has been added to this repository: `ìnstaller.py`; this script will try to install each module and report modules that could not be isntalled at the end of the install proces. To run this script activate your virtual environment, then run the script `python installer.py` (assuming your terminal window is in the project root folder). 
 
-On Windows systems you can use the requirements_windows.txt file and install an environment from there. This is the environment dumped from a system that did not have GPU-acceleration.
+In case pip autoloads a module that is not compatible with ROCM (such as: https://pypi.org/project/tf-keras/ which has built in support for transformers and looked cool to use but broke keras), you can restore the venv by using `pip install tensorflow-rocm==2.17 -f https://repo.radeon.com/rocm/manylinux/rocm-rel-6.3 --upgrade  --force-reinstall ` (apply the correct Major, Minor version code for rocm and tensorflow in the URI parameters.)
 
 
 ## Project configuration
